@@ -604,6 +604,8 @@ body.apt-mode #apt-bar{display:flex}
   /* resort info panel becomes a thumb-reachable bottom sheet on phones */
   #info-panel{top:auto !important;bottom:12px;left:12px;right:12px;width:auto;max-height:64vh;display:none;}
   #info-panel .pbody{max-height:44vh;}
+  /* while the resort sheet is up, get the floating tool buttons out of the way */
+  body.ip-open #radar-ctrl{display:none;}
   .gm-card{bottom:12px;}
 }
 </style>
@@ -1654,9 +1656,10 @@ function showPanel(r){
   var _ws=document.getElementById('ov-website');
   if(_ws){ if(r.url){ _ws.href=r.url; _ws.style.display=''; } else { _ws.style.display='none'; } }
   document.getElementById('info-panel').style.display='block';
+  document.body.classList.add('ip-open');
   switchTab('ov');
 }
-function closePanel(){document.getElementById('info-panel').style.display='none';curResort=null;}
+function closePanel(){document.getElementById('info-panel').style.display='none';document.body.classList.remove('ip-open');curResort=null;}
 
 /* Directions straight from the resort card — mirrors the place-card flow */
 function resortDirTo(){
