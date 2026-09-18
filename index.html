@@ -1476,8 +1476,10 @@ async function loadWX(r) {
   try {
     const res=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${r.lat}&longitude=${r.lng}&current=temperature_2m,weathercode,windspeed_10m,snow_depth&daily=weathercode,temperature_2m_max,temperature_2m_min,snowfall_sum&timezone=auto&forecast_days=7`);
     const d=await res.json();
+    if(curResort!==r) return; // user moved on — don't paint stale data
     wxCache[k]=d; renderWX(d,r);
   } catch(e) {
+    if(curResort!==r) return;
     if(isWX){document.getElementById('wx-ldg').style.display='none';document.getElementById('wx-err').style.display='block';}
     if(isSN){document.getElementById('sn-ldg').style.display='none';document.getElementById('sn-err').style.display='block';}
   }
@@ -1562,9 +1564,11 @@ async function loadCams(r){
     if(!res.ok) throw new Error(res.status);
     const d=await res.json();
     const cams=(d.webcams||[]).filter(w=>w.status==='active');
+    if(curResort!==r) return; // user moved on — don't paint stale data
     camCache[r.name]=cams;
     renderCams(r,cams);
   } catch(e){
+    if(curResort!==r) return;
     document.getElementById('cam-ldg').style.display='none';
     const er=document.getElementById('cam-err');
     er.style.display='block';
@@ -1615,7 +1619,7 @@ function openCamView(idx,resort){
 }
 function closeCamView(){document.getElementById('cam-view').classList.remove('open');clearInterval(cvTimer);}
 function openWindyCam(){window.open(cvWindyId?`https://www.windy.com/webcams/${cvWindyId}`:`https://www.windy.com/-Webcams/webcams`,'_blank');}
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCamView();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('cam-view').classList.contains('open'))closeCamView();});
 
 // ── PANEL ─────────────────────────────────────────────────────────────────────
 function showPanel(r){
@@ -2748,11 +2752,11 @@ function buildParkingPopupHTML(p, enriched) {
       onerror="this.parentElement.innerHTML='<div class=pk-photo-empty><span style=font-size:24px>🅿</span><span>No photo</span></div>'"/>`;
     // Carousel prev/next (in-popup navigation)
     if (photoIds.length > 1) {
-      html += `<button class="pk-photo-btn prev" onclick="pkPhotoNav('${uid}',${photoUrls},event,-1)">‹</button>`;
-      html += `<button class="pk-photo-btn next" onclick="pkPhotoNav('${uid}',${photoUrls},event,1)">›</button>`;
+      html += `<button class="pk-photo-btn prev" onclick="pkPhotoNav('${uid}',event,-1)">‹</button>`;
+      html += `<button class="pk-photo-btn next" onclick="pkPhotoNav('${uid}',event,1)">›</button>`;
       html += `<div class="pk-photo-nav">`;
       for (let i = 0; i < Math.min(photoIds.length, 8); i++)
-        html += `<div class="pk-photo-dot${i===0?' active':''}" onclick="pkPhotoDot('${uid}',${photoUrls},${i},event)"></div>`;
+        html += `<div class="pk-photo-dot${i===0?' active':''}" onclick="pkPhotoDot('${uid}',${i},event)"></div>`;
       html += `</div>`;
     }
     html += `</div>`;
@@ -2865,13 +2869,17 @@ function pkImgClick(uid) {
   const reg = pkPhotoRegistry[uid];
   if (reg) openPkLightbox(reg.urls, reg.startIdx || 0, reg.name);
 }
-function pkPhotoNav(uid, urls, e, dir) {
+function pkPhotoNav(uid, e, dir) {
   e.stopPropagation();
+  const urls = pkPhotoRegistry[uid]?.urls || [];
+  if (!urls.length) return;
   pkPhotoIdx[uid] = ((pkPhotoIdx[uid] || 0) + dir + urls.length) % urls.length;
   pkApplyPhoto(uid, urls, pkPhotoIdx[uid]);
 }
-function pkPhotoDot(uid, urls, idx, e) {
+function pkPhotoDot(uid, idx, e) {
   e.stopPropagation();
+  const urls = pkPhotoRegistry[uid]?.urls || [];
+  if (!urls.length) return;
   pkPhotoIdx[uid] = idx;
   pkApplyPhoto(uid, urls, idx);
 }
@@ -3151,6 +3159,7 @@ function onScrub(v){stopAnim();animIdx=parseInt(v);showFrame(animIdx);}
 async function toggleRadar(){
   const btn=document.getElementById('rad-btn'),panel=document.getElementById('scrub-panel');
   if(radOn){if(radLayer){map.removeLayer(radLayer);radLayer=null;}stopAnim();radOn=false;btn.classList.remove('active');btn.textContent='🌧 Radar';panel.style.display='none';const pr=document.getElementById('precip-type-row');if(pr)pr.style.display='none';return;}
+  if(btn.classList.contains('loading'))return; // already fetching — ignore double-tap
   btn.classList.add('loading');btn.textContent='⏳ Loading…';
   try{
     radFrames=await fetchFrames();
@@ -3435,7 +3444,7 @@ function closeSVOverlay() {
   if (iframe) iframe.src = ''; // stop loading
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSVOverlay(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { const o=document.getElementById('sv-overlay'); if (o && o.style.display && o.style.display!=='none') closeSVOverlay(); } });
 
 // ── OPEN GOOGLE MAPS EMBED (place view) ──────────────────────────────────────
 function openGMapsEmbed() {
@@ -3844,6 +3853,9 @@ function closeWx10(){ document.getElementById('wx10-panel').classList.remove('op
 let wx10Drag=null;
 function wx10DragStart(e){
   if(e.target.id==='wx10-close') return;
+  const now=Date.now();
+  if(wx10DragStart._last&&now-wx10DragStart._last<500) return; // ignore synthetic duplicate (touch+mouse)
+  wx10DragStart._last=now;
   const panel=document.getElementById('wx10-panel');
   const rect=panel.getBoundingClientRect();
   const pt=e.touches?e.touches[0]:e;
@@ -5213,6 +5225,7 @@ function aptMakeDraggable(handle,panel){
     panel.style.top=Math.max(4,Math.min(window.innerHeight-60,st+e.clientY-sy))+'px';
   });
   handle.addEventListener('pointerup',()=>drag=false);
+  handle.addEventListener('pointercancel',()=>drag=false);
 }
 </script>
 
@@ -5610,6 +5623,21 @@ function gmInitMapClick(){
 /* ── wire into existing routing ── */
 function gmWireRouting(){
   try{
+    /* double-tap guard on GO: wrap getDirections with an in-flight flag */
+    if(typeof getDirections==="function"&&!getDirections._gmGuarded){
+      var _gd=getDirections;
+      var gw=function(){
+        if(gw._busy)return Promise.resolve();
+        gw._busy=true;
+        var p;
+        try{ p=_gd.apply(null,arguments); }
+        catch(e){ gw._busy=false; throw e; }
+        return Promise.resolve(p).then(function(v){gw._busy=false;return v;},function(e){gw._busy=false;throw e;});
+      };
+      gw._gmGuarded=true;
+      getDirections=gw;
+      try{ window.getDirections=gw; }catch(e){}
+    }
     if(typeof syncDirDestFromInput==="function"&&!syncDirDestFromInput._gmWrapped){
       var orig=syncDirDestFromInput;
       var w=function(){
@@ -5652,6 +5680,24 @@ whenMap(function(){
   gmInitCtx();
   gmInitMapClick();
   gmWireRouting();
+  /* in-flight guards: double-tapping scan buttons must not double-fetch */
+  ["scanGPParking","scanGoogleEVChargers","scanHotels","scanGyms","scanTravelCenters"].forEach(function(n){
+    try{
+      var fn=window[n];
+      if(typeof fn==="function"&&!fn._gmGuarded){
+        var w=function(){
+          if(w._busy)return Promise.resolve();
+          w._busy=true;
+          var p;
+          try{ p=fn.apply(null,arguments); }
+          catch(e){ w._busy=false; throw e; }
+          return Promise.resolve(p).then(function(v){w._busy=false;return v;},function(e){w._busy=false;throw e;});
+        };
+        w._gmGuarded=true;
+        window[n]=w;
+      }
+    }catch(e){}
+  });
   document.addEventListener("keydown",function(e){
     if(e.key==="Escape"){gmHideCtx();gmHideCard();if(gmMeasure.active)gmMeasureStop();}
   });
