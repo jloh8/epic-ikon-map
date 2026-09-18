@@ -5314,7 +5314,27 @@ var CSS=[
 ".dmbtn{min-height:42px !important;min-width:42px !important;}",
 "#dir-go{min-height:46px !important;padding:0 20px !important;font-weight:700 !important;}",
 ".tc-action,.pk-action{min-height:42px !important;}",
-".gm-link{min-height:40px !important;}"
+".gm-link{min-height:40px !important;}",
+"/* floating route results panel */",
+"#gm-route-panel{position:fixed;left:12px;width:346px;max-width:calc(100vw - 24px);max-height:64vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg1,#131e2b);border:1px solid var(--border2,#2b3f56);border-radius:16px;z-index:1100;box-shadow:0 12px 40px rgba(0,0,0,.55);padding:14px;display:none;}",
+"#gm-route-panel.open{display:block;animation:grpIn .22s ease;}",
+"@keyframes grpIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:none;}}",
+".grp-head{display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;}",
+".grp-dest{flex:1;font-size:16px;font-weight:700;color:var(--text,#f8fafc);line-height:1.35;}",
+".grp-x{width:34px;height:34px;border-radius:50%;border:none;background:transparent;color:var(--text3,#94a3b8);font-size:15px;cursor:pointer;flex-shrink:0;}",
+".grp-x:hover{background:var(--bg2,#1f2f40);}",
+".grp-routes{margin-bottom:6px;}",
+".grp-route-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border,#1f2f40);border-radius:12px;margin-bottom:6px;cursor:pointer;min-height:56px;background:var(--bg,#0b121c);}",
+".grp-route-row:active{transform:scale(.98);}",
+".grp-route-row.sel{border-color:var(--ice,#0ea5e9);background:rgba(14,165,233,.08);}",
+".grp-route-bar{width:4px;height:34px;border-radius:2px;flex-shrink:0;}",
+".grp-route-row .t{font-size:15px;font-weight:700;color:var(--text,#f8fafc);}",
+".grp-route-row .d{font-size:12px;color:var(--text3,#94a3b8);margin-top:2px;}",
+".grp-tag{margin-left:auto;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--bg3,#2b3f56);color:var(--text2,#e2e8f0);white-space:nowrap;}",
+".grp-route-row.sel .grp-tag{background:rgba(14,165,233,.18);color:var(--ice3,#7dd3fc);}",
+".grp-xover-bar{display:flex;align-items:center;gap:10px;border-top:1px solid var(--border,#1f2f40);padding-top:10px;margin-top:6px;}",
+".grp-list{margin-top:2px;}",
+".grp-gmlink{margin-top:10px;}"
 ].join("\n");
 
 /* ── unified info card ── */
@@ -5527,38 +5547,72 @@ function gmMeasureStop(){
 }
 
 /* ── destination + crossover resorts along route ── */
-var xover={layers:[],destStar:null,on:true,km:50};
-function gmInjectXoverUI(){
-  var anchor=document.getElementById("dir-status");
-  if(!anchor||document.getElementById("xover-wrap"))return;
-  var w=mkEl('<div id="xover-wrap"><div class="xover-bar"><label class="xover-toggle"><input type="checkbox" id="xover-on" checked/><span>⛷ Pass resorts along route</span></label>'+
-    '<select id="xover-km" aria-label="Corridor width"><option value="25">25 km</option><option value="50" selected>50 km</option><option value="100">100 km</option></select></div>'+
-    '<div id="xover-list"></div></div>');
-  anchor.parentNode.insertBefore(w,anchor.nextSibling);
-  w.querySelector("#xover-on").addEventListener("change",function(e){xover.on=e.target.checked;gmRenderXover();});
-  w.querySelector("#xover-km").addEventListener("change",function(e){xover.km=+e.target.value;gmRenderXover();});
+var xover={layers:[],destStar:null,on:true,km:50,panel:null};
+function gmRoutePanel(){
+  var p=document.getElementById("gm-route-panel");
+  if(p){xover.panel=p;return p;}
+  p=mkEl('<div id="gm-route-panel" role="dialog" aria-label="Route results">'+
+    '<div class="grp-head"><div class="grp-dest">\u2B50 Route</div><button class="grp-x" aria-label="Clear route">\u2715</button></div>'+
+    '<div class="grp-routes"></div>'+
+    '<div class="grp-xover-bar"><label class="xover-toggle"><input type="checkbox" id="grp-xover-on" checked/><span>\u26F7 Pass resorts along route</span></label>'+
+    '<select id="grp-xover-km" aria-label="Corridor width"><option value="25">25 km</option><option value="50" selected>50 km</option><option value="100">100 km</option></select></div>'+
+    '<div class="grp-list"></div>'+
+    '<button class="gm-link grp-gmlink">Open in Google Maps \u2192</button></div>');
+  document.body.appendChild(p);
+  p.querySelector(".grp-x").addEventListener("click",function(){ if(typeof clearDirs==="function")clearDirs(); });
+  p.querySelector(".grp-gmlink").addEventListener("click",function(){ if(typeof openGM==="function")openGM(); });
+  p.querySelector("#grp-xover-on").addEventListener("change",function(e){xover.on=e.target.checked;gmRenderXover();});
+  p.querySelector("#grp-xover-km").addEventListener("change",function(e){xover.km=+e.target.value;gmRenderXover();});
+  xover.panel=p;
+  return p;
+}
+function gmInjectXoverUI(){ /* panel is created lazily on first route */ }
+function gmPositionPanel(){
+  var p=xover.panel||document.getElementById("gm-route-panel");
+  if(!p)return;
+  var tb=document.getElementById("topbar");
+  p.style.top=((tb?tb.offsetHeight:0)+10)+"px";
 }
 function gmClearXover(){
   xover.layers.forEach(function(l){try{map.removeLayer(l);}catch(e){}});
   xover.layers=[];
   if(xover.destStar){try{map.removeLayer(xover.destStar);}catch(e){}xover.destStar=null;}
-  var list=document.getElementById("xover-list");
-  if(list)list.innerHTML="";
+  var p=document.getElementById("gm-route-panel");
+  if(p)p.classList.remove("open");
 }
 function gmRenderXover(){
-  gmClearXover();
-  if(!xover.on)return;
+  xover.layers.forEach(function(l){try{map.removeLayer(l);}catch(e){}});
+  xover.layers=[];
+  if(xover.destStar){try{map.removeLayer(xover.destStar);}catch(e){}xover.destStar=null;}
   var routes=(typeof savedRoutes!=="undefined")?savedRoutes:[];
-  if(!routes.length)return;
+  if(!routes.length){gmClearXover();return;}
+  var p=gmRoutePanel();
+  gmPositionPanel();
   var idx=(typeof selRouteIdx!=="undefined")?selRouteIdx:0;
   var route=routes[idx]||routes[0];
-  if(!route||!route.geometry||!route.geometry.coordinates||!route.geometry.coordinates.length)return;
-  var pts=route.geometry.coordinates;
   var dest=(typeof savedResort!=="undefined"&&savedResort)?savedResort:((typeof dirDest!=="undefined")?dirDest:null);
+  p.querySelector(".grp-dest").textContent="\u2B50 "+(dest&&dest.name?dest.name:"Destination");
+  var rbox=p.querySelector(".grp-routes"),rh="";
+  for(var ri=0;ri<routes.length;ri++){
+    (function(r,i){
+      var dur="",dist="";
+      try{ dur=fmtDur(r.duration); }catch(e){}
+      try{ dist=fmtDist(r.distance); }catch(e){}
+      rh+='<div class="grp-route-row'+(i===idx?" sel":"")+'" data-i="'+i+'"><div class="grp-route-bar" style="background:'+((typeof RCOLS!=="undefined"&&RCOLS[i])||"#888")+'"></div><div><div class="t">'+esc(dur)+'</div><div class="d">'+esc(dist)+'</div></div><span class="grp-tag">'+(i===0?"Fastest":"Alt "+i)+"</span></div>";
+    })(routes[ri],ri);
+  }
+  rbox.innerHTML=rh;
+  rbox.querySelectorAll(".grp-route-row").forEach(function(rowEl){
+    rowEl.addEventListener("click",function(){ if(typeof selectRoute==="function")selectRoute(+rowEl.getAttribute("data-i")); });
+  });
+  var list=p.querySelector(".grp-list");
   if(dest&&dest.lat!==undefined){
-    xover.destStar=L.marker([dest.lat,dest.lng],{icon:L.divIcon({html:'<div class="gm-dest-star">⭐</div>',className:"",iconSize:[40,40],iconAnchor:[20,20]}),zIndexOffset:1000}).addTo(map);
+    xover.destStar=L.marker([dest.lat,dest.lng],{icon:L.divIcon({html:'<div class="gm-dest-star">\u2B50</div>',className:"",iconSize:[40,40],iconAnchor:[20,20]}),zIndexOffset:1000}).addTo(map);
     xover.destStar.bindTooltip("Destination: "+dest.name,{direction:"top",offset:[0,-20]});
   }
+  if(!xover.on){ list.innerHTML='<div class="xover-empty">Toggle on to see pass resorts near this route.</div>'; p.classList.add("open"); return; }
+  if(!route||!route.geometry||!route.geometry.coordinates||!route.geometry.coordinates.length){ list.innerHTML=""; p.classList.add("open"); return; }
+  var pts=route.geometry.coordinates;
   var step=Math.max(1,Math.floor(pts.length/800));
   var found=[];
   var all=(typeof mks!=="undefined")?mks:[];
@@ -5576,31 +5630,32 @@ function gmRenderXover(){
       (function(rr,dd){
         var col=rr.pass==="epic"?"#3b82f6":rr.pass==="ikon"?"#f59e0b":"#a855f7";
         var ring=L.circleMarker([rr.lat,rr.lng],{radius:13,color:col,weight:3,fill:false,opacity:.9}).addTo(map);
-        ring.bindTooltip(rr.name+" · "+dd.toFixed(0)+" km off route",{direction:"top",offset:[0,-11]});
+        ring.bindTooltip(rr.name+" \u00B7 "+dd.toFixed(0)+" km off route",{direction:"top",offset:[0,-11]});
         xover.layers.push(ring);
       })(r,best);
       found.push({r:r,km:best});
     }
   }
   found.sort(function(a,b){return a.km-b.km;});
-  var list=document.getElementById("xover-list");
-  if(!list)return;
-  if(!found.length){list.innerHTML='<div class="xover-empty">No pass resorts within '+xover.km+" km of this route.</div>";return;}
-  var html='<div class="xover-head">⛷ '+found.length+" pass resort"+(found.length>1?"s":"")+" along route</div>";
-  found.forEach(function(f,i){
-    var badge=f.r.pass==="both"?"Epic + Ikon":f.r.pass==="epic"?"Epic":"Ikon";
-    var cls=f.r.pass==="both"?"both":f.r.pass;
-    html+='<div class="xover-row" data-i="'+i+'"><span class="xover-dot '+cls+'"></span><span class="xover-name">'+esc(f.r.name)+'</span><span class="xover-badge '+cls+'">'+badge+'</span><span class="xover-km">'+f.km.toFixed(0)+" km</span></div>";
-  });
-  list.innerHTML=html;
-  list.querySelectorAll(".xover-row").forEach(function(rowEl){
-    rowEl.addEventListener("click",function(){
-      var f=found[+rowEl.getAttribute("data-i")];
-      if(!f)return;
-      map.flyTo([f.r.lat,f.r.lng],9,{duration:.8});
-      if(typeof showPanel==="function")showPanel(f.r);
+  if(!found.length){list.innerHTML='<div class="xover-empty">No pass resorts within '+xover.km+" km of this route.</div>";}
+  else{
+    var html='<div class="xover-head">\u26F7 '+found.length+" pass resort"+(found.length>1?"s":"")+" along route</div>";
+    found.forEach(function(f,i){
+      var badge=f.r.pass==="both"?"Epic + Ikon":f.r.pass==="epic"?"Epic":"Ikon";
+      var cls=f.r.pass==="both"?"both":f.r.pass;
+      html+='<div class="xover-row" data-i="'+i+'"><span class="xover-dot '+cls+'"></span><span class="xover-name">'+esc(f.r.name)+'</span><span class="xover-badge '+cls+'">'+badge+'</span><span class="xover-km">'+f.km.toFixed(0)+" km</span></div>";
     });
-  });
+    list.innerHTML=html;
+    list.querySelectorAll(".xover-row").forEach(function(rowEl){
+      rowEl.addEventListener("click",function(){
+        var f=found[+rowEl.getAttribute("data-i")];
+        if(!f)return;
+        map.flyTo([f.r.lat,f.r.lng],9,{duration:.8});
+        if(typeof showPanel==="function")showPanel(f.r);
+      });
+    });
+  }
+  p.classList.add("open");
 }
 
 /* ── map click → what's here ── */
@@ -5680,6 +5735,7 @@ whenMap(function(){
   gmInitCtx();
   gmInitMapClick();
   gmWireRouting();
+  window.addEventListener("resize",gmPositionPanel);
   /* in-flight guards: double-tapping scan buttons must not double-fetch */
   ["scanGPParking","scanGoogleEVChargers","scanHotels","scanGyms","scanTravelCenters"].forEach(function(n){
     try{
