@@ -147,6 +147,12 @@
 
 /* panel header */.ph{ padding: 18px 48px 16px 20px; border-bottom: 1px solid var(--border); background: linear-gradient(135deg, var(--bg2) 0%, var(--bg1) 100%); position: relative; }.ph::before{ content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--ice); opacity: 0.7; }.pp{ font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; padding: 4px 10px; border-radius: 99px; display: inline-block; }.pp.epic{ background: var(--epic-dim); color: #7fb3ff; border: 1px solid rgba(59,130,246,0.3); }.pp.ikon{ background: var(--ikon-dim); color: #7ec5f0; border: 1px solid rgba(2,132,199,0.3); }.pp.both{ background: #1a1040; color: #c4b5fd; border: 1px solid rgba(167,139,250,0.3); }.pn{ font-size: 20px; font-weight: 700; color: var(--snow); margin-bottom: 4px; line-height: 1.2; }.ps{ font-size: 13px; color: var(--text3); font-family: 'DM Mono', monospace; }.pc{ position: absolute; top: 10px; right: 10px; z-index: 20; background: var(--bg3); border: 1px solid var(--border); color: var(--text3); cursor: pointer; width: 44px; height: 44px; border-radius: 50%; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }.pc:hover{ background: var(--bg4); color: var(--text); transform: rotate(90deg); }.pc:active{ transform: scale(0.92); }
 
+/* directions bar — fixed under the header, visible on every tab */
+.pdir{ display: flex; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--bg); }
+.pdir-btn{ flex: 1; padding: 12px 8px; border-radius: 10px; border: 1px solid var(--border2); background: var(--bg3); color: var(--text2); font-size: 13px; font-weight: 600; font-family: 'DM Sans', system-ui, sans-serif; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: all 0.15s; }
+.pdir-btn:active{ transform: scale(0.97); }
+.pdir-go{ flex: 1.35; background: #0c3a5e; border-color: #2563a8; color: #bfdbfe; }
+
 /* tabs */.ptabs{ display: flex; border-bottom: 1px solid var(--border); background: var(--bg); }.ptab{ flex: 1; padding: 13px 4px; font-size: 12px; font-weight: 500; font-family: 'DM Mono', monospace; color: var(--text3); background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; letter-spacing: 0.03em; transition: all 0.2s; text-transform: uppercase; }.ptab:hover{ color: var(--text2); background: rgba(255,255,255,0.02); }.ptab.active{ color: var(--ice); border-bottom-color: var(--ice); background: rgba(14,165,233,0.05); }.pbody{ padding: 16px 20px; min-height: 180px; max-height: 420px; overflow-y: auto; }.pbody::-webkit-scrollbar{ width: 5px; }.pbody::-webkit-scrollbar-track{ background: transparent; }.pbody::-webkit-scrollbar-thumb{ background: var(--border2); border-radius: 4px; }.tc{ display: none; }.tc.active{ display: block; animation: fadeIn 0.3s ease; }
 
 /* ── OVERVIEW TAB ── */.ps2{ display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--text3); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }.ps2:last-of-type{ margin-bottom: 0; border-bottom: none; }.pv{ color: var(--text); font-weight: 500; font-family: 'DM Mono', monospace; font-size: 14px; }.par{ font-size: 12px; color: var(--text4); margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); line-height: 1.6; }
@@ -705,6 +711,10 @@ body.apt-mode #apt-bar{display:flex}
       <div id="pp" class="pp epic">Epic Pass</div>
       <div class="pn" id="pname">—</div>
       <div class="ps" id="ploc">—</div>
+    </div>
+    <div class="pdir">
+      <button class="pdir-btn pdir-go" onclick="resortDirTo()">🧭 Directions to here</button>
+      <button class="pdir-btn" onclick="resortDirFrom()">From here</button>
     </div>
     <div class="ptabs">
       <button class="ptab active" onclick="switchTab('ov')">INFO</button>
@@ -1649,6 +1659,22 @@ function showPanel(r){
   switchTab('ov');
 }
 function closePanel(){document.getElementById('info-panel').style.display='none';curResort=null;}
+
+/* Directions straight from the resort card — mirrors the place-card flow */
+function resortDirTo(){
+  var r=curResort; if(!r||r.lat===undefined||r.lng===undefined) return;
+  var label=r.name+(r.loc?', '+r.loc:'');
+  try{ gmSetDest(r.lat,r.lng,label); }catch(e){ return; }
+  closePanel();
+  try{ gmMaybeRoute(); }catch(e){}
+}
+function resortDirFrom(){
+  var r=curResort; if(!r||r.lat===undefined||r.lng===undefined) return;
+  var label=r.name+(r.loc?', '+r.loc:'');
+  try{ gmSetOrigin(r.lat,r.lng,label); }catch(e){ return; }
+  closePanel();
+  try{ gmMaybeRoute(); }catch(e){}
+}
 
 // ── FILTER ────────────────────────────────────────────────────────────────────
 function setMarkerVisible(m,ok){
