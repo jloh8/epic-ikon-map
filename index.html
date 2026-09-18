@@ -1654,8 +1654,6 @@ function showPanel(r){
   var _ws=document.getElementById('ov-website');
   if(_ws){ if(r.url){ _ws.href=r.url; _ws.style.display=''; } else { _ws.style.display='none'; } }
   document.getElementById('info-panel').style.display='block';
-  document.getElementById('dir-to').value=r.name+', '+r.loc;
-  dirDest=r;
   switchTab('ov');
 }
 function closePanel(){document.getElementById('info-panel').style.display='none';curResort=null;}
@@ -5437,6 +5435,8 @@ function gmMaybeRoute(){
   var inp=!fv?document.getElementById("dir-from"):document.getElementById("dir-to");
   if(inp){ inp.focus(); inp.scrollIntoView({behavior:"smooth",block:"center"}); }
 }
+/* exposed for the resort card's Directions buttons (outside this IIFE) */
+window.gmSetOrigin=gmSetOrigin; window.gmSetDest=gmSetDest; window.gmMaybeRoute=gmMaybeRoute;
 
 /* ── search ── */
 var sTimer=null;
