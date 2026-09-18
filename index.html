@@ -5316,7 +5316,7 @@ var CSS=[
 ".tc-action,.pk-action{min-height:42px !important;}",
 ".gm-link{min-height:40px !important;}",
 "/* floating route results panel */",
-"#gm-route-panel{position:fixed;left:12px;width:346px;max-width:calc(100vw - 24px);max-height:64vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg1,#131e2b);border:1px solid var(--border2,#2b3f56);border-radius:16px;z-index:1100;box-shadow:0 12px 40px rgba(0,0,0,.55);padding:14px;display:none;}",
+"#gm-route-panel{position:fixed;left:12px;width:346px;max-width:calc(100vw - 24px);max-height:64vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg1,#131e2b);border:1px solid var(--border2,#2b3f56);border-radius:16px;z-index:1250;box-shadow:0 12px 40px rgba(0,0,0,.55);padding:14px;display:none;}",
 "#gm-route-panel.open{display:block;animation:grpIn .22s ease;}",
 "@keyframes grpIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:none;}}",
 ".grp-head{display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;}",
@@ -5334,7 +5334,9 @@ var CSS=[
 ".grp-route-row.sel .grp-tag{background:rgba(14,165,233,.18);color:var(--ice3,#7dd3fc);}",
 ".grp-xover-bar{display:flex;align-items:center;gap:10px;border-top:1px solid var(--border,#1f2f40);padding-top:10px;margin-top:6px;}",
 ".grp-list{margin-top:2px;}",
-".grp-gmlink{margin-top:10px;}"
+".grp-gmlink{margin-top:10px;}",
+"#gm-toast{position:fixed;left:50%;bottom:88px;transform:translate(-50%,12px);background:rgba(19,30,43,.95);border:1px solid var(--border2,#2b3f56);color:var(--text,#f8fafc);font-size:13px;padding:10px 18px;border-radius:24px;z-index:1400;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;box-shadow:0 8px 28px rgba(0,0,0,.5);max-width:calc(100vw - 48px);text-align:center;}",
+"#gm-toast.show{opacity:1;transform:translate(-50%,0);}"
 ].join("\n");
 
 /* ── unified info card ── */
@@ -5389,6 +5391,8 @@ function gmSetOrigin(lat,lng,label){
   var inp=document.getElementById("dir-from");
   if(inp) inp.value=label;
   try{ dirFromPlace={label:label,lat:lat,lng:lng}; dirFromResort=null; }catch(e){}
+  var t=document.getElementById("dir-to");
+  if(!(t&&t.value.trim())) gmToast("\uD83D\uDCCD Origin set: "+label+" \u2014 now choose a destination");
 }
 function gmSetDest(lat,lng,label){
   var inp=document.getElementById("dir-to");
@@ -5571,7 +5575,19 @@ function gmPositionPanel(){
   var p=xover.panel||document.getElementById("gm-route-panel");
   if(!p)return;
   var tb=document.getElementById("topbar");
-  p.style.top=((tb?tb.offsetHeight:0)+10)+"px";
+  var top=(tb?tb.offsetHeight:0)+10;
+  var rc=document.getElementById("radar-ctrl");
+  if(rc){ try{ var r=rc.getBoundingClientRect(); if(r&&r.bottom>top) top=r.bottom+10; }catch(e){} }
+  p.style.top=top+"px";
+}
+var gmToastT=null;
+function gmToast(msg){
+  var t=document.getElementById("gm-toast");
+  if(!t){ t=mkEl('<div id="gm-toast" role="status"></div>'); document.body.appendChild(t); }
+  t.textContent=msg;
+  t.classList.add("show");
+  clearTimeout(gmToastT);
+  gmToastT=setTimeout(function(){ t.classList.remove("show"); },2600);
 }
 function gmClearXover(){
   xover.layers.forEach(function(l){try{map.removeLayer(l);}catch(e){}});
@@ -5619,12 +5635,11 @@ function gmRenderXover(){
   for(var mi=0;mi<all.length;mi++){
     var r=all[mi]._r;
     if(!r)continue;
-    if(dest&&r.name===dest.name)continue;
+    if(dest&&dest.lat!==undefined&&havKm(r.lat,r.lng,dest.lat,dest.lng)<3)continue;
     var best=1e9;
     for(var i=0;i<pts.length;i+=step){
       var d=havKm(r.lat,r.lng,pts[i][1],pts[i][0]);
       if(d<best)best=d;
-      if(best<=xover.km*0.4)break;
     }
     if(best<=xover.km){
       (function(rr,dd){
