@@ -6123,7 +6123,12 @@ function parseOSM(j,lat0,lng0){
     if(an!==bn)return an-bn;
     return b.lenM-a.lenM;
   });
-  if(pistes.length>150)pistes.length=150;
+  if(pistes.length>150){
+    /* never drop mapped glades to truncation: keep every glade, trim the rest */
+    var gl=pistes.filter(function(p){return p.glade||/glade/i.test(p.name||'');});
+    var rest=pistes.filter(function(p){return !(p.glade||/glade/i.test(p.name||''));});
+    pistes=gl.concat(rest).slice(0,150);
+  }
   if(lifts.length>40)lifts.length=40;
   return {pistes:pistes,lifts:lifts};
 }
