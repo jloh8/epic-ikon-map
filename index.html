@@ -454,6 +454,8 @@
 #s3d-fssub{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);margin-top:2px}
 #s3d-fsclose{background:rgba(255,255,255,.07);border:1px solid var(--border2);color:var(--text);width:44px;height:44px;border-radius:50%;font-size:17px;cursor:pointer;flex-shrink:0;touch-action:manipulation}
 #s3d-stage.full #s3d-viewwrap{flex:1 1 auto;height:auto;min-height:0;border-radius:0;border:none}
+#s3d-stage.full #s3d-mapwrap{display:none}
+#s3d-stage.full .s3d-note{display:none}
 #s3d-stage.full #s3d-bottom{flex-shrink:0;overflow-y:auto;max-height:40dvh;padding:8px 12px calc(12px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
 #s3d-stage.full #s3d-mapwrap{margin-bottom:8px}
 #s3d-viewwrap.fullbtn-hide #s3d-expandbtn{display:none}
@@ -5993,7 +5995,9 @@ function s3dShow(r){
   if(!loadEl||!stage) return;
   if(S&&S.name===r.name){
     loadEl.style.display='none'; err.style.display='none'; stage.style.display='block';
-    sizeRenderer(); startLoop(); drawMap(); return;
+    sizeRenderer(); startLoop(); drawMap();
+    if(!stage.classList.contains('full'))s3dExpand();
+    return;
   }
   disposeViewer();
   var tok=++buildId;
@@ -6257,14 +6261,14 @@ function buildRealScene(r,base,dem,osm){
         emissive:op.diff.col,emissiveIntensity:0.06}));
     mesh.userData.piste=p; p.mesh=mesh; p.mat=mesh.material;
     /* run name painted onto the ribbon, one label per ~350m of run */
-    var tex=makePisteTexture(nm,op.diff.css);
+    var tex=makePisteTexture((tree?'🌲 ':'')+nm,op.diff.css);
     tex.repeat.x=Math.max(1,Math.round(p.lenM/350));
     mesh.material.map=tex; p.tex=tex;
     pisteGroup.add(mesh);
-    if(tree){ /* dark dashed centreline marks tree runs in 3D */
+    if(tree){ /* bright dashed centreline marks tree runs in 3D */
       var lg=new THREE.BufferGeometry().setFromPoints(pts.map(function(v){
         return new THREE.Vector3(v.x,v.y+1.2,v.z);}));
-      var ld=new THREE.LineDashedMaterial({color:0x14532d,dashSize:9*k,gapSize:7*k,linewidth:2});
+      var ld=new THREE.LineDashedMaterial({color:0x4ade80,dashSize:11*k,gapSize:7*k,linewidth:3});
       var ln=new THREE.Line(lg,ld); ln.computeLineDistances();
       pisteGroup.add(ln); p.treeLine=ln;
     }
@@ -6669,6 +6673,9 @@ function finishBuild(r,tok){
   buildLegend();
   var lb=document.getElementById('s3d-labelbtn');if(lb)lb.classList.toggle('on',!!(S&&S.labelsOn));
   var ft=document.getElementById('s3d-fstitle');if(ft)ft.textContent=r.name+' · 3D';
+  /* 3D opens as a full overlay (tap 🏔 3D → mountain fills the screen) */
+  var st=document.getElementById('s3d-stage');
+  if(st&&!st.classList.contains('full'))s3dExpand();
   var def=null,i;
   if(S.mode==='real'){
     var blues=S.pistes.filter(function(p){return p.diff.k==='blue';});
@@ -6709,6 +6716,7 @@ function startLoop(){if(S&&!S.raf){S.last=performance.now();S.raf=requestAnimati
 function s3dExpand(){
   var st=document.getElementById('s3d-stage');if(!st||!S)return;
   st.classList.add('full');
+  var vw=document.getElementById('s3d-viewwrap');if(vw)vw.classList.add('fullbtn-hide');
   var t=document.getElementById('s3d-fstitle');if(t)t.textContent=S.name+' · 3D';
   try{document.body.style.overflow='hidden';}catch(e){}
   sizeRenderer();
@@ -6716,6 +6724,7 @@ function s3dExpand(){
 function s3dCollapse(){
   var st=document.getElementById('s3d-stage');if(!st)return;
   st.classList.remove('full');
+  var vw=document.getElementById('s3d-viewwrap');if(vw)vw.classList.remove('fullbtn-hide');
   try{document.body.style.overflow='';}catch(e){}
   sizeRenderer();
 }
