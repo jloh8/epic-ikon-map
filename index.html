@@ -436,7 +436,8 @@
 #s3d-stop{background:linear-gradient(135deg,#ef4444,#b91c1c)!important;border:none!important;color:#fff!important}
 #s3d-prog{position:absolute;left:10px;right:10px;bottom:10px;height:5px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden;display:none}
 #s3d-progfill{height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#a78bfa);border-radius:3px}
-#s3d-stats{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr;gap:6px;margin:10px 0}
+#s3d-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}
+#s3d-stats .s3d-stat:first-child{grid-column:1/-1}
 .s3d-stat{background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;min-width:0}
 .s3d-stat span{display:block;font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--snow);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .s3d-stat .s3d-sub{font-family:'DM Mono',monospace;font-size:8.5px;color:var(--text4);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;font-weight:400}
@@ -6280,11 +6281,11 @@ function buildRealScene(r,base,dem,osm){
     var tree=!!(op.glade||/glade/i.test(nm));
     var treeSrc=op.glade?'glade tag':(/glade/i.test(nm)?'name':'');
     var p={name:nm,diff:op.diff,curve:curve,pts:pts,tree:tree,treeSrc:treeSrc,
-      width:op.diff.w,lenM:len,dropM:trueDrop,grade:horiz>0?dropSum/horiz*100:0,
+      width:op.diff.w*2.2*k,lenM:len,dropM:trueDrop,grade:horiz>0?dropSum/horiz*100:0,
       maxGrade:steepestGrade(raw,tH,1),real:true};
     var mesh=new THREE.Mesh(buildRibbon(pts,p.width,hAt,2),
       new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.85,metalness:0,
-        emissive:op.diff.col,emissiveIntensity:0.06}));
+        emissive:op.diff.col,emissiveIntensity:0.18}));
     mesh.userData.piste=p; p.mesh=mesh; p.mat=mesh.material;
     /* run name painted onto the ribbon, one label per ~350m of run */
     var tex=makePisteTexture((tree?'🌲 ':'')+nm,op.diff.css);
@@ -6313,14 +6314,14 @@ function buildRealScene(r,base,dem,osm){
   var base0=lowestEndpoint(pistes,hAt);
   buildVillageAt(scene,hAt,mulberry32(hashStr('vil'+r.name)),base0.x,base0.z);
   /* directional reference labels: base village + summit (highest terrain point) */
-  var baseLab=makeLabel('▼ BASE','#f59e0b',150*k);
+  var baseLab=makeLabel('▼ BASE','#f59e0b',55*k);
   baseLab.position.set(base0.x,hAt(base0.x,base0.z)+120*k,base0.z);
   scene.add(baseLab);
   var sx=0,sz=0,sh=-1e18;
   for(var gx=-half;gx<=half;gx+=half/18)for(var gz=-half;gz<=half;gz+=half/18){
     var gh=hAt(gx,gz); if(gh>sh){sh=gh;sx=gx;sz=gz;}
   }
-  var sumLab=makeLabel('▲ SUMMIT','#e2e8f0',150*k);
+  var sumLab=makeLabel('▲ SUMMIT','#e2e8f0',55*k);
   sumLab.position.set(sx,sh+120*k,sz);
   scene.add(sumLab);
 
@@ -6574,13 +6575,13 @@ function buildProceduralScene(r,base,dem){
   buildTrees(scene,heightAt,rand,samples,half,5);
   buildVillageProc(scene,heightAt,rand);
   /* approximate base + summit reference labels (illustrative layout) */
-  var bLab=makeLabel('▼ BASE','#f59e0b',130*k);
+  var bLab=makeLabel('▼ BASE','#f59e0b',55*k);
   bLab.position.set(0,heightAt(0,1460)+90*k,1460); scene.add(bLab);
   var sx=0,sz=0,sh=-1e18,gx,gz;
   for(gx=-half;gx<=half;gx+=half/16)for(gz=-half;gz<=half;gz+=half/16){
     var gh=heightAt(gx,gz); if(gh>sh){sh=gh;sx=gx;sz=gz;}
   }
-  var sLab=makeLabel('▲ SUMMIT','#e2e8f0',130*k);
+  var sLab=makeLabel('▲ SUMMIT','#e2e8f0',55*k);
   sLab.position.set(sx,sh+90*k,sz); scene.add(sLab);
   var skier=makeSkier(scene);
 
@@ -6822,7 +6823,7 @@ function tick(now){
 function selectPiste(p){
   if(!S||!p) return;
   S.sel=p;
-  S.pistes.forEach(function(q){q.mat.emissiveIntensity=(q===p?0.55:0.06);});
+  S.pistes.forEach(function(q){q.mat.emissiveIntensity=(q===p?0.85:0.18);});
   document.getElementById('s3d-linename').textContent=p.name;
   document.getElementById('s3d-linediff').textContent=p.diff.label+(p.real?' · real':'')+(p.tree?' · 🌲 tree run':'');
   document.getElementById('s3d-vert').textContent=Math.round(p.dropM*3.28084).toLocaleString()+' ft';
