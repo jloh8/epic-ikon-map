@@ -6283,7 +6283,7 @@ function buildRealScene(r,base,dem,osm){
     var p={name:nm,diff:op.diff,curve:curve,pts:pts,tree:tree,treeSrc:treeSrc,
       width:op.diff.w*k,lenM:len,dropM:trueDrop,grade:horiz>0?dropSum/horiz*100:0,
       maxGrade:steepestGrade(raw,tH,1),real:true};
-    var mesh=new THREE.Mesh(buildRibbon(pts,p.width,hAt,14),
+    var mesh=new THREE.Mesh(buildRibbon(pts,p.width,hAt,10+p.width*0.3),
       new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.85,metalness:0,
         emissive:op.diff.col,emissiveIntensity:0.18}));
     mesh.userData.piste=p; p.mesh=mesh; p.mat=mesh.material;
@@ -6294,7 +6294,7 @@ function buildRealScene(r,base,dem,osm){
     pisteGroup.add(mesh);
     if(tree){ /* bright dashed centreline marks tree runs in 3D */
       var lg=new THREE.BufferGeometry().setFromPoints(pts.map(function(v){
-        return new THREE.Vector3(v.x,v.y+14,v.z);}));
+        return new THREE.Vector3(v.x,v.y+10+p.width*0.3,v.z);}));
       var ld=new THREE.LineDashedMaterial({color:0x4ade80,dashSize:11*k,gapSize:7*k,linewidth:3});
       var ln=new THREE.Line(lg,ld); ln.computeLineDistances();
       pisteGroup.add(ln); p.treeLine=ln;
