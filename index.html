@@ -6000,7 +6000,7 @@ function fetchOSM(lat,lng){
 }
 function overpassQuery(url,lat,lng){
   var s=lat-0.045,w=lng-0.06,n=lat+0.045,e=lng+0.06;
-  var q='[out:json][timeout:30];(way["piste:type"~"^(downhill|ski)$"]('+
+  var q='[out:json][timeout:30];(way["piste:type"~"^(downhill|ski|glade)$"]('+
     s+','+w+','+n+','+e+');way["aerialway"~"^(chair_lift|gondola|cable_car|t-bar|j-bar|platter|drag_lift|magic_carpet)$"]('+
     s+','+w+','+n+','+e+'););out tags geom;';
   var ctl=null;
@@ -6052,7 +6052,7 @@ function parseOSMXML(xml,lat0,lng0){
     var tgs=w.getElementsByTagName('tag');
     for(k=0;k<tgs.length;k++)tags[tgs[k].getAttribute('k')]=tgs[k].getAttribute('v');
     var pt=tags['piste:type'];
-    if(!((pt==='downhill'||pt==='ski')||tags.aerialway))continue;
+    if(!((pt==='downhill'||pt==='ski'||pt==='glade')||tags.aerialway))continue;
     var nds=w.getElementsByTagName('nd');
     for(k=0;k<nds.length;k++){
       var nd=nodes[nds[k].getAttribute('ref')];
@@ -6083,7 +6083,8 @@ function parseOSM(j,lat0,lng0){
       var dk=OSM_DIFF[String(tags['piste:difficulty']||'').toLowerCase()]||'blue';
       var diff=null,d;
       for(d=0;d<DIFFS.length;d++)if(DIFFS[d].k===dk)diff=DIFFS[d];
-      pistes.push({name:tags.name||null,diff:diff,raw:pts,lenM:len});
+      pistes.push({name:tags.name||null,diff:diff,raw:pts,lenM:len,
+        glade:tags['piste:type']==='glade',treeFrac:0});
     }else if(tags.aerialway){
       lifts.push({name:tags.name||null,kind:tags.aerialway,raw:pts,lenM:len});
     }
@@ -6097,6 +6098,76 @@ function parseOSM(j,lat0,lng0){
   if(pistes.length>150)pistes.length=150;
   if(lifts.length>40)lifts.length=40;
   return {pistes:pistes,lifts:lifts};
+}
+
+/* ── tree-run detection: forest polygons are fetched separately (best-effort) so a
+   slow forest query can never block or break the piste/lift fetch above ── */
+function inRing(x,z,ring){
+  if(x<ring.bx0||x>ring.bx1||z<ring.bz0||z>ring.bz1)return false;
+  var pts=ring.pts,inside=false,i,j;
+  for(i=0,j=pts.length-1;i<pts.length;j=i++){
+    var xi=pts[i].x,zi=pts[i].z,xj=pts[j].x,zj=pts[j].z;
+    if(((zi>z)!==(zj>z))&&(x<(xj-xi)*(z-zi)/(zj-zi)+xi))inside=!inside;
+  }
+  return inside;
+}
+function parseForests(j,lat0,lng0){
+  if(!j||!j.elements)return [];
+  var P=proj0(lat0,lng0),rings=[],i,e;
+  for(i=0;i<j.elements.length;i++){
+    e=j.elements[i];
+    if(e.type!=='way'||!e.geometry||e.geometry.length<3)continue;
+    var tags=e.tags||{};
+    if(tags.natural!=='wood'&&tags.landuse!=='forest')continue;
+    var ring=[],g,k,bx0=1e18,bx1=-1e18,bz0=1e18,bz1=-1e18;
+    for(k=0;k<e.geometry.length;k+=2){
+      g=e.geometry[k];
+      var m=P.f(g.lat,g.lon);
+      ring.push({x:m[0],z:m[1]});
+      if(m[0]<bx0)bx0=m[0];if(m[0]>bx1)bx1=m[0];
+      if(m[1]<bz0)bz0=m[1];if(m[1]>bz1)bz1=m[1];
+    }
+    if(ring.length>2)rings.push({pts:ring,bx0:bx0,bx1:bx1,bz0:bz0,bz1:bz1});
+    if(rings.length>400)break;
+  }
+  return rings;
+}
+function fetchForests(lat,lng){
+  if(typeof lat!=='number'||typeof lng!=='number')return Promise.resolve([]);
+  var s=lat-0.045,w=lng-0.06,n=lat+0.045,e=lng+0.06;
+  var q='[out:json][timeout:25];(way["natural"="wood"]('+
+    s+','+w+','+n+','+e+');way["landuse"="forest"]('+
+    s+','+w+','+n+','+e+'););out tags geom;';
+  function one(url){
+    var ctl=null;
+    try{ctl=new AbortController();}catch(ab){}
+    var to=setTimeout(function(){if(ctl)ctl.abort();},30000);
+    var opts={method:'POST',body:'data='+encodeURIComponent(q),
+      headers:{'Content-Type':'application/x-www-form-urlencoded'}};
+    if(ctl)opts.signal=ctl.signal;
+    return fetch(url,opts).then(function(res){
+      clearTimeout(to);
+      if(!res.ok)throw new Error('overpass '+res.status);
+      return res.json();
+    }).then(function(j){return parseForests(j,lat,lng);},
+      function(){return [];});
+  }
+  return one('https://overpass-api.de/api/interpreter').then(function(r){
+    return r.length?r:one('https://overpass.kumi.systems/api/interpreter');
+  });
+}
+function applyTreeCover(pistes,rings){
+  if(!rings||!rings.length)return;
+  pistes.forEach(function(op){
+    var inside=0,tested=0,k,f,p;
+    for(k=0;k<op.raw.length;k+=3){
+      p=op.raw[k];tested++;
+      for(f=0;f<rings.length;f++){
+        if(inRing(p.x,p.z,rings[f])){inside++;break;}
+      }
+    }
+    op.treeFrac=tested?inside/tested:0;
+  });
 }
 
 function slugify(n){return String(n).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
@@ -6137,10 +6208,11 @@ function buildViewer(r,tok){
     var base;
     try{base=makeBase(dem?dem.half:WORLD);}catch(e){showErr();return;}
     setLoad('Loading real pistes · OpenStreetMap…');
-    fetchOSM(r.lat,r.lng).then(function(osm){
+    Promise.all([fetchOSM(r.lat,r.lng),fetchForests(r.lat,r.lng)]).then(function(rr){
+      var osm=rr[0];
       if(!alive(r,tok)){disposeBase(base);return;}
       try{
-        if(dem&&osm)buildRealScene(r,base,dem,osm);
+        if(dem&&osm){applyTreeCover(osm.pistes,rr[1]);buildRealScene(r,base,dem,osm);}
         else buildProceduralScene(r,base,dem);
       }catch(e){disposeBase(base);showErr();return;}
       finishBuild(r,tok);
@@ -6204,13 +6276,24 @@ function buildRealScene(r,base,dem,osm){
     var curve=new THREE.CatmullRomCurve3(pts);
     var len=curve.getLength(),drop=pts[0].y-pts[pts.length-1].y,horiz=0;
     for(i=1;i<pts.length;i++)horiz+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].z-pts[i-1].z);
-    var p={name:op.name||(op.diff.label+' '+(idx+1)),diff:op.diff,curve:curve,pts:pts,
+    var nm=op.name||(op.diff.label+' '+(idx+1));
+    var tree=!!(op.glade||op.treeFrac>=0.4||/glade/i.test(nm));
+    var treeSrc=op.glade?'glade tag':(op.treeFrac>=0.4?'forest cover':(/glade/i.test(nm)?'name':''));
+    var p={name:nm,diff:op.diff,curve:curve,pts:pts,tree:tree,treeSrc:treeSrc,
+      treeFrac:op.treeFrac||0,
       width:op.diff.w,lenM:len,dropM:Math.max(0,drop),grade:horiz>0?drop/horiz*100:0,real:true};
     var mesh=new THREE.Mesh(buildRibbon(pts,p.width,hAt,2),
       new THREE.MeshStandardMaterial({color:op.diff.col,roughness:0.85,metalness:0,
         emissive:op.diff.col,emissiveIntensity:0.06}));
     mesh.userData.piste=p; p.mesh=mesh; p.mat=mesh.material;
     pisteGroup.add(mesh);
+    if(tree){ /* dark dashed centreline marks tree runs in 3D */
+      var lg=new THREE.BufferGeometry().setFromPoints(pts.map(function(v){
+        return new THREE.Vector3(v.x,v.y+1.2,v.z);}));
+      var ld=new THREE.LineDashedMaterial({color:0x14532d,dashSize:9*k,gapSize:7*k,linewidth:2});
+      var ln=new THREE.Line(lg,ld); ln.computeLineDistances();
+      pisteGroup.add(ln); p.treeLine=ln;
+    }
     return p;
   });
 
@@ -6232,7 +6315,7 @@ function buildRealScene(r,base,dem,osm){
      controls:base.controls,pistes:pistes,pisteGroup:pisteGroup,lifts:lifts,skier:skier,
      sel:null,riding:null,raf:0,last:0,H:vrange,EX:half,vrange:vrange,k:k,
      mapB:pisteBounds(pistes)};
-  setNote('Real terrain (elevation data) · real pistes & lifts © OpenStreetMap contributors — drag to orbit · pinch to zoom.');
+  setNote('Real terrain (elevation data) · real pistes & lifts © OpenStreetMap contributors · 🌲 = tree run (OSM glade tag or forest cover) — drag to orbit · pinch to zoom.');
 }
 function buildTerrainReal(scene,hAt,half,vrange){
   var SEG=170,SIZE=half*2;
@@ -6579,22 +6662,43 @@ function selectPiste(p){
   S.sel=p;
   S.pistes.forEach(function(q){q.mat.emissiveIntensity=(q===p?0.55:0.06);});
   document.getElementById('s3d-linename').textContent=p.name;
-  document.getElementById('s3d-linediff').textContent=p.diff.label+(p.real?' · real':'');
+  document.getElementById('s3d-linediff').textContent=p.diff.label+(p.real?' · real':'')+(p.tree?' · 🌲 tree run':'');
   document.getElementById('s3d-vert').textContent=Math.round(p.dropM*3.28084).toLocaleString()+' ft';
   document.getElementById('s3d-len').textContent=(p.lenM/1609.34).toFixed(1)+' mi';
   document.getElementById('s3d-grade').textContent=Math.round(p.grade)+'%';
   var chips=document.getElementById('s3d-chips').children;
-  for(var i=0;i<chips.length;i++)chips[i].classList.toggle('on',S.pistes[i]===p);
+  for(var i=0;i<chips.length;i++)chips[i].classList.toggle('on',chips[i]._piste===p);
   drawMap();
 }
 function buildChips(){
   var box=document.getElementById('s3d-chips');box.innerHTML='';
+  var nTree=S.pistes.filter(function(p){return p.tree;}).length;
+  if(nTree){
+    var t=document.createElement('button');t.className='s3d-chip'+(S.treeOnly?' on':'');
+    t.innerHTML='🌲 trees ('+nTree+')';
+    t.onclick=function(){S.treeOnly=!S.treeOnly;applyTreeFilter();};
+    box.appendChild(t);
+  }
   S.pistes.forEach(function(p){
-    var b=document.createElement('button');b.className='s3d-chip';
-    b.innerHTML='<i style="background:'+p.diff.css+'"></i>'+escapeHtml(p.name);
+    var b=document.createElement('button');b.className='s3d-chip';b._piste=p;
+    b.dataset.tree=p.tree?'1':'';
+    b.innerHTML='<i style="background:'+p.diff.css+'"></i>'+(p.tree?'🌲 ':'')+escapeHtml(p.name);
     b.onclick=function(){selectPiste(p);};
     box.appendChild(b);
   });
+  applyTreeFilter();
+}
+function applyTreeFilter(){
+  var chips=document.getElementById('s3d-chips').children,i,p;
+  for(i=0;i<chips.length;i++){
+    var c=chips[i];
+    if(c.textContent.indexOf('🌲 trees')===0){c.classList.toggle('on',!!S.treeOnly);continue;}
+    p=c._piste;
+    var show=!S.treeOnly||!p||p.tree;
+    c.style.display=show?'':'none';
+    if(p){p.mesh.visible=show;if(p.treeLine)p.treeLine.visible=show;}
+  }
+  drawMap();
 }
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g,function(c){
@@ -6634,7 +6738,7 @@ function stopRide(done){
   document.getElementById('s3d-stop').style.display='none';
   document.getElementById('s3d-prog').style.display='none';
   document.getElementById('s3d-progfill').style.width='0';
-  if(done&&S.sel)document.getElementById('s3d-linediff').textContent=S.sel.diff.label+' · finished ✓';
+  if(done&&S.sel)document.getElementById('s3d-linediff').textContent=S.sel.diff.label+(S.sel.real?' · real':'')+(S.sel.tree?' · 🌲 tree run':'')+' · finished ✓';
   drawMap();
 }
 
@@ -6667,9 +6771,11 @@ function drawMap(){
     ctx.stroke();ctx.setLineDash([]);
   });
   S.pistes.forEach(function(p){
+    if(S.treeOnly&&!p.tree)return;
     var sel=(p===S.sel);
     ctx.strokeStyle=p.diff.css;ctx.globalAlpha=sel?1:0.55;
     ctx.lineWidth=sel?5:2.6;ctx.lineJoin='round';ctx.lineCap='round';
+    if(p.tree)ctx.setLineDash([7,5]);
     if(sel){ctx.shadowColor=p.diff.css;ctx.shadowBlur=10;}
     ctx.beginPath();
     for(i=0;i<p.pts.length;i+=2){var m=w2m(p.pts[i].x,p.pts[i].z,W,Hh);i?ctx.lineTo(m[0],m[1]):ctx.moveTo(m[0],m[1]);}
