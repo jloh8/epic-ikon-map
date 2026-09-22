@@ -1187,7 +1187,7 @@ body.apt-mode #apt-bar{display:flex}
       <div class="tp-sec-label">1 · Pick your resorts</div>
       <div class="tp-presets">
         <button class="tp-preset" id="tp-pre-mw" onclick="tripPreset('mw')">Midwest Ikon <span>5</span></button>
-        <button class="tp-preset" id="tp-pre-wc" onclick="tripPreset('wc')">West Coast Ikon <span>10</span></button>
+        <button class="tp-preset" id="tp-pre-wc" onclick="tripPreset('wc')">West Coast Ikon <span>9</span></button>
         <button class="tp-preset" id="tp-pre-all" onclick="tripPreset('all')">All Ikon <span id="tp-all-n">–</span></button>
       </div>
       <div class="tp-custom-toggle" onclick="tripToggleCustom()">＋ Custom picks <span id="tp-custom-count"></span></div>
@@ -1330,7 +1330,6 @@ const resorts = [
   {name:"Mammoth Mountain",pass:"ikon",lat:37.630,lng:-119.032,loc:"California, USA",vert:"3,100 ft",acres:"3,500",snow:"400 in",access:"Unlimited",url:"https://www.mammothmountain.com",green:25,blue:40,red:25,black:10},
   {name:"June Mountain",pass:"ikon",lat:37.773,lng:-119.082,loc:"California, USA",vert:"2,590 ft",acres:"500",snow:"250 in",access:"Unlimited",url:"https://www.junemountain.com",green:35,blue:45,red:15,black:5},
   {name:"Big Bear Mountain",pass:"ikon",lat:34.237,lng:-116.889,loc:"California, USA",vert:"1,665 ft",acres:"438",snow:"100 in",access:"Unlimited",url:"https://www.bigbearmountainresort.com",green:30,blue:40,red:20,black:10},
-  {name:"Snow Summit",pass:"ikon",lat:34.229,lng:-116.891,loc:"California, USA",vert:"1,209 ft",acres:"240",snow:"100 in",access:"Unlimited",url:"https://www.snowsummit.com",green:10,blue:65,red:15,black:10},
   {name:"Snow Valley",pass:"ikon",lat:34.221,lng:-117.053,loc:"California, USA",vert:"1,141 ft",acres:"240",snow:"80 in",access:"Unlimited",url:"https://www.snow-valley.com",green:35,blue:45,red:15,black:5},
   {name:"Sierra-at-Tahoe",pass:"ikon",lat:38.800,lng:-120.080,loc:"California, USA",vert:"2,212 ft",acres:"2,000",snow:"400 in",access:"Unlimited",url:"https://www.sierraattahoe.com",green:25,blue:50,red:16,black:9},
   // Oregon
@@ -3319,7 +3318,7 @@ function stopAnim(){
 // ── ROAD TRIP PLANNER ─────────────────────────────────────────────────────────
 const TRIP_PRESETS = {
   mw: { label:'Midwest', names:["Boyne Mountain","Boyne Highlands","Snowriver Mountain Resort","Lutsen Mountains","Granite Peak"] },
-  wc: { label:'West Coast', names:["Palisades Tahoe","Sierra-at-Tahoe","Mammoth Mountain","June Mountain","Big Bear Mountain","Snow Summit","Snow Valley","Mt Bachelor","Crystal Mountain","Summit at Snoqualmie"] }
+  wc: { label:'West Coast', names:["Palisades Tahoe","Sierra-at-Tahoe","Mammoth Mountain","June Mountain","Big Bear Mountain","Snow Valley","Mt Bachelor","Crystal Mountain","Summit at Snoqualmie"] }
 };
 let tripSel = new Set(TRIP_PRESETS.mw.names.concat(TRIP_PRESETS.wc.names)); // default: the full user list
 let tripCustomBuilt = false, tripPlan = null, tripLayer = null, tripLegsFlipped = false, tripEstFallback = false;
