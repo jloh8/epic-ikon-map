@@ -6713,8 +6713,13 @@ function sizeRenderer(){
   sizeMap();
 }
 function startLoop(){if(S&&!S.raf){S.last=performance.now();S.raf=requestAnimationFrame(tick);}}
+var s3dHome=null; /* original home of #s3d-stage, so the overlay can escape the card */
 function s3dExpand(){
   var st=document.getElementById('s3d-stage');if(!st||!S)return;
+  /* #info-panel has backdrop-filter, which traps position:fixed inside the card —
+     reparent the stage to <body> so the overlay truly covers the viewport */
+  if(!s3dHome)s3dHome={parent:st.parentNode,next:st.nextSibling};
+  if(st.parentNode!==document.body)document.body.appendChild(st);
   st.classList.add('full');
   var vw=document.getElementById('s3d-viewwrap');if(vw)vw.classList.add('fullbtn-hide');
   var t=document.getElementById('s3d-fstitle');if(t)t.textContent=S.name+' · 3D';
@@ -6725,9 +6730,16 @@ function s3dCollapse(){
   var st=document.getElementById('s3d-stage');if(!st)return;
   st.classList.remove('full');
   var vw=document.getElementById('s3d-viewwrap');if(vw)vw.classList.remove('fullbtn-hide');
+  if(s3dHome&&s3dHome.parent){
+    try{s3dHome.parent.insertBefore(st,s3dHome.next);}catch(e){s3dHome.parent.appendChild(st);}
+    s3dHome=null;
+  }
   try{document.body.style.overflow='';}catch(e){}
   sizeRenderer();
 }
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){var st=document.getElementById('s3d-stage');if(st&&st.classList.contains('full'))s3dCollapse();}
+});
 function s3dLabels(){
   if(!S)return;
   S.labelsOn=!S.labelsOn;
