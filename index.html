@@ -6283,9 +6283,9 @@ function buildRealScene(r,base,dem,osm){
     var p={name:nm,diff:op.diff,curve:curve,pts:pts,tree:tree,treeSrc:treeSrc,
       width:op.diff.w*k,lenM:len,dropM:trueDrop,grade:horiz>0?dropSum/horiz*100:0,
       maxGrade:steepestGrade(raw,tH,1),real:true};
-    var mesh=new THREE.Mesh(buildRibbon(pts,60,hAt,25),
-      new THREE.MeshBasicMaterial({color:op.diff.col,side:THREE.DoubleSide}));
-    mesh.frustumCulled=false; /* diagnostic: rule out bad bounding-sphere culling */
+    var mesh=new THREE.Mesh(buildRibbon(pts,p.width,hAt,12+p.width*0.25),
+      new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide}));
+    mesh.frustumCulled=false; /* bad bounding-sphere culling hid ribbons entirely */
     mesh.userData.piste=p; p.mesh=mesh; p.mat=mesh.material;
     /* run name painted onto the ribbon, one label per ~350m of run */
     var tex=makePisteTexture((tree?'🌲 ':'')+nm,op.diff.css);
@@ -6294,7 +6294,7 @@ function buildRealScene(r,base,dem,osm){
     pisteGroup.add(mesh);
     if(tree){ /* bright dashed centreline marks tree runs in 3D */
       var lg=new THREE.BufferGeometry().setFromPoints(pts.map(function(v){
-        return new THREE.Vector3(v.x,v.y+25,v.z);}));
+        return new THREE.Vector3(v.x,v.y+12+p.width*0.25,v.z);}));
       var ld=new THREE.LineDashedMaterial({color:0x4ade80,dashSize:11*k,gapSize:7*k,linewidth:3});
       var ln=new THREE.Line(lg,ld); ln.computeLineDistances();
       pisteGroup.add(ln); p.treeLine=ln;
