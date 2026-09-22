@@ -6285,11 +6285,12 @@ function buildRealScene(r,base,dem,osm){
       maxGrade:steepestGrade(raw,tH,1),real:true};
     var mesh=new THREE.Mesh(buildRibbon(pts,60,hAt,25),
       new THREE.MeshBasicMaterial({color:op.diff.col,side:THREE.DoubleSide}));
+    mesh.frustumCulled=false; /* diagnostic: rule out bad bounding-sphere culling */
     mesh.userData.piste=p; p.mesh=mesh; p.mat=mesh.material;
-    /* DIAGNOSTIC: texture disabled to test if ribbons render without it */
-    /* var tex=makePisteTexture((tree?'🌲 ':'')+nm,op.diff.css);
+    /* run name painted onto the ribbon, one label per ~350m of run */
+    var tex=makePisteTexture((tree?'🌲 ':'')+nm,op.diff.css);
     tex.repeat.x=Math.max(1,Math.round(p.lenM/350));
-    mesh.material.map=tex; p.tex=tex; */
+    mesh.material.map=tex; p.tex=tex;
     pisteGroup.add(mesh);
     if(tree){ /* bright dashed centreline marks tree runs in 3D */
       var lg=new THREE.BufferGeometry().setFromPoints(pts.map(function(v){
