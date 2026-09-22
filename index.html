@@ -5911,9 +5911,11 @@ whenMap(function(){
 
 </script>
 <script>
-/* ═══ 3D SLOPE VIEWER — stylized per-resort preview ═══
-   Terrain + piste layout are procedurally generated, seeded by resort name,
-   and scaled to the resort's real vertical drop & difficulty mix. */
+/* ═══ 3D SLOPE VIEWER — real terrain + real pistes ═══
+   Primary path: real elevation from AWS Terrain Tiles (Terrarium encoding)
+   + real piste & lift geometry from OpenStreetMap, with real run names,
+   lengths and verticals. Falls back to the legacy stylized procedural
+   preview when real data can't be loaded for a resort. */
 (function(){
 'use strict';
 
@@ -5923,8 +5925,10 @@ var DIFFS=[
  {k:'red',  label:'Red',  col:0xff5040,css:'#ff5040',w:19,wig:0.12,fr:1.2,pts:6},
  {k:'black',label:'Black',col:0x273041,css:'#c7d2de',w:15,wig:0.05,fr:0.8,pts:5}
 ];
-var WORLD=1600; // world half-extent (metres-ish)
-var S=null, THREE=null, OrbitControls=null, threeLoading=null;
+var OSM_DIFF={novice:'green',easy:'green',beginner:'green',intermediate:'blue',advanced:'red',expert:'black',freeride:'black',extreme:'black'};
+var WORLD=1600; // legacy procedural half-extent (metres-ish)
+var EXAG=1.3;   // vertical exaggeration for real terrain
+var S=null, THREE=null, OrbitControls=null, threeLoading=null, buildId=0;
 
 function hashStr(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
@@ -5941,19 +5945,29 @@ function makeNoise(rand){
     return a+(b-a)*sx+(c-a)*sz+(a-b-c+d)*sx*sz;
   };
 }
-function makeHeight(seed,H){
-  var rand=mulberry32(hashStr('mtn'+seed));
-  var nz=makeNoise(rand);
-  var px=(rand()-0.5)*360, pz=(rand()-0.5)*360;
-  return function(x,z){
-    var dx=(x-px)/1180, dz=(z-pz)/1480, r2=dx*dx+dz*dz;
-    var h=H*Math.exp(-r2*2.6);
-    h+=H*0.11*(nz(x*0.0016+7.3,z*0.0016+2.1)-0.5)*2;
-    h+=H*0.035*(nz(x*0.006+1.7,z*0.006+8.4)-0.5)*2;
-    return h>0?h:0;
+function parseVert(v){var m=String(v||'').replace(/[^0-9]/g,'');return m?parseInt(m,10):2000;}
+function setLoad(t){var e=document.getElementById('s3d-load');if(e)e.textContent=t;}
+function setNote(t){var e=document.querySelector('#tc-3d .s3d-note');if(e)e.textContent=t;}
+
+/* ── geo projection: x = east metres, z = south metres, around resort centre ── */
+function proj0(lat0,lng0){
+  var kx=111320*Math.cos(lat0*Math.PI/180);
+  return {
+    f:function(lat,lng){return [(lng-lng0)*kx,(lat0-lat)*111320];},
+    inv:function(x,z){return [lat0-z/111320,lng0+x/kx];}
   };
 }
-function parseVert(v){var m=String(v||'').replace(/[^0-9]/g,'');return m?parseInt(m,10):2000;}
+function ll2tile(lat,lng,z){
+  var n=Math.pow(2,z),lr=lat*Math.PI/180;
+  return {x:Math.floor((lng+180)/360*n),
+          y:Math.floor((1-Math.log(Math.tan(lr)+1/Math.cos(lr))/Math.PI)/2*n)};
+}
+function tile2ll(x,y,z){
+  var n=Math.pow(2,z);
+  var lng=x/n*360-180;
+  var r=Math.atan(Math.sinh(Math.PI*(1-2*y/n)));
+  return {lat:r*180/Math.PI,lng:lng};
+}
 
 /* ── public entry points (wired from switchTab / buttons) ── */
 function s3dShow(r){
@@ -5966,8 +5980,10 @@ function s3dShow(r){
     sizeRenderer(); startLoop(); drawMap(); return;
   }
   disposeViewer();
+  var tok=++buildId;
   loadEl.style.display='block'; stage.style.display='none'; err.style.display='none';
-  loadThree().then(function(){buildViewer(r);},
+  setLoad('Loading 3D…');
+  loadThree().then(function(){buildViewer(r,tok);},
     function(){loadEl.style.display='none'; err.style.display='block';});
 }
 function s3dPause(){ if(S&&S.raf){cancelAnimationFrame(S.raf); S.raf=0;} }
@@ -5981,84 +5997,397 @@ function loadThree(){
   })();
   return threeLoading;
 }
+function alive(r,tok){
+  return tok===buildId&&typeof curResort!=='undefined'&&curResort===r&&activeTab==='3d';
+}
+
+/* ── real data: OpenStreetMap pistes + lifts ── */
+function fetchOSM(lat,lng){
+  var s=lat-0.045,w=lng-0.06,n=lat+0.045,e=lng+0.06;
+  var q='[out:json][timeout:30];(way["piste:type"~"^(downhill|ski)$"]('+
+    s+','+w+','+n+','+e+');way["aerialway"~"^(chair_lift|gondola|cable_car|t-bar|j-bar|platter|drag_lift|magic_carpet)$"]('+
+    s+','+w+','+n+','+e+'););out tags geom;';
+  var ctl;
+  try{ctl=new AbortController();}catch(ab){ctl=null;}
+  var to=setTimeout(function(){if(ctl)ctl.abort();},35000);
+  var opts={method:'POST',body:'data='+encodeURIComponent(q),
+    headers:{'Content-Type':'application/x-www-form-urlencoded'}};
+  if(ctl)opts.signal=ctl.signal;
+  return fetch('https://overpass-api.de/api/interpreter',opts).then(function(res){
+    clearTimeout(to);
+    if(!res.ok)throw new Error('overpass '+res.status);
+    return res.json();
+  }).then(function(j){return parseOSM(j,lat,lng);},
+    function(){return null;});
+}
+function parseOSM(j,lat0,lng0){
+  if(!j||!j.elements)return null;
+  var P=proj0(lat0,lng0),pistes=[],lifts=[],i,e;
+  for(i=0;i<j.elements.length;i++){
+    e=j.elements[i];
+    if(e.type!=='way'||!e.geometry||e.geometry.length<2)continue;
+    var tags=e.tags||{},pts=[],g,k;
+    for(k=0;k<e.geometry.length;k++){
+      g=e.geometry[k];
+      var m=P.f(g.lat,g.lon);
+      pts.push({x:m[0],z:m[1]});
+    }
+    var len=0;
+    for(k=1;k<pts.length;k++)len+=Math.hypot(pts[k].x-pts[k-1].x,pts[k].z-pts[k-1].z);
+    if(len<60)continue;
+    if(tags['piste:type']){
+      var dk=OSM_DIFF[String(tags['piste:difficulty']||'').toLowerCase()]||'blue';
+      var diff=null,d;
+      for(d=0;d<DIFFS.length;d++)if(DIFFS[d].k===dk)diff=DIFFS[d];
+      pistes.push({name:tags.name||null,diff:diff,raw:pts,lenM:len});
+    }else if(tags.aerialway){
+      lifts.push({name:tags.name||null,kind:tags.aerialway,raw:pts,lenM:len});
+    }
+  }
+  if(!pistes.length)return null;
+  pistes.sort(function(a,b){
+    var an=a.name?0:1,bn=b.name?0:1;
+    if(an!==bn)return an-bn;
+    return b.lenM-a.lenM;
+  });
+  if(pistes.length>150)pistes.length=150;
+  if(lifts.length>40)lifts.length=40;
+  return {pistes:pistes,lifts:lifts};
+}
+
+/* ── real data: elevation tiles (Terrarium) ── */
+function loadTile(z,x,y){
+  return new Promise(function(res,rej){
+    var to=setTimeout(function(){rej(new Error('tile timeout'));},20000);
+    var im=new Image();
+    im.crossOrigin='anonymous';
+    im.onload=function(){clearTimeout(to);res(im);};
+    im.onerror=function(){clearTimeout(to);rej(new Error('tile error'));};
+    im.src='https://s3.amazonaws.com/elevation-tiles-prod/terrarium/'+z+'/'+x+'/'+y+'.png';
+  });
+}
+function fetchTerrain(lat,lng){
+  var z=13,c=ll2tile(lat,lng,z),x0=c.x-1,y0=c.y-1,jobs=[],dx,dy;
+  for(dy=0;dy<3;dy++)for(dx=0;dx<3;dx++)jobs.push(loadTile(z,x0+dx,y0+dy));
+  return Promise.all(jobs).then(function(imgs){
+    var cv=document.createElement('canvas');cv.width=cv.height=768;
+    var cx=cv.getContext('2d',{willReadFrequently:true});
+    if(!cx)throw new Error('no 2d ctx');
+    for(var i=0;i<9;i++)cx.drawImage(imgs[i],(i%3)*256,((i/3)|0)*256);
+    var d=cx.getImageData(0,0,768,768).data;
+    var el=new Float32Array(768*768),mn=1e9,mx=-1e9,i2,e;
+    for(i2=0;i2<768*768;i2++){
+      e=d[i2*4]*256+d[i2*4+1]+d[i2*4+2]/256-32768;
+      el[i2]=e;if(e<mn)mn=e;if(e>mx)mx=e;
+    }
+    if(!(mx-mn>20))throw new Error('flat terrain');
+    var nw=tile2ll(x0,y0,z),se=tile2ll(x0+3,y0+3,z);
+    var P=proj0(lat,lng);
+    var ex=(se.lng-nw.lng)*111320*Math.cos(lat*Math.PI/180)/2;
+    var ez=(nw.lat-se.lat)*111320/2;
+    function sample(x,z){
+      var ll=P.inv(x,z);
+      var gx=(ll[1]-nw.lng)/(se.lng-nw.lng)*767;
+      var gy=(nw.lat-ll[0])/(nw.lat-se.lat)*767;
+      gx=gx<0?0:gx>767?767:gx; gy=gy<0?0:gy>767?767:gy;
+      var xi=Math.floor(gx),yi=Math.floor(gy),fx=gx-xi,fy=gy-yi;
+      var xj=xi<767?xi+1:767,yj=yi<767?yi+1:767;
+      var a=el[yi*768+xi],b=el[yi*768+xj],cc=el[yj*768+xi],dd=el[yj*768+xj];
+      return a+(b-a)*fx+(cc-a)*fy+(a-b-cc+dd)*fx*fy;
+    }
+    return {sample:sample,mn:mn,mx:mx,half:Math.max(ex,ez)};
+  },function(){return null;});
+}
+function loadRealData(r){
+  if(typeof r.lat!=='number'||typeof r.lng!=='number')return Promise.resolve(null);
+  return Promise.all([fetchOSM(r.lat,r.lng),fetchTerrain(r.lat,r.lng)])
+    .then(function(out){
+      if(!out[0]||!out[1])return null;
+      return {osm:out[0],dem:out[1]};
+    },function(){return null;});
+}
 
 /* ── scene construction ── */
-function buildViewer(r){
-  if(typeof curResort==='undefined'||curResort!==r||activeTab!=='3d') return;
+function buildViewer(r,tok){
+  if(!alive(r,tok))return;
+  var base;
+  try{
+    var estHalf=(typeof r.lat==='number')
+      ? 40075016*Math.cos(r.lat*Math.PI/180)/8192*1.5 : WORLD;
+    base=makeBase(estHalf);
+  }catch(e){showErr();return;}
+  setLoad('Loading real terrain & pistes…');
+  loadRealData(r).then(function(rd){
+    if(!alive(r,tok)){disposeBase(base);return;}
+    try{
+      if(rd)buildRealScene(r,base,rd);
+      else buildProceduralScene(r,base);
+    }catch(e){disposeBase(base);showErr();return;}
+    finishBuild(r,tok);
+  });
+}
+function showErr(){
+  document.getElementById('s3d-load').style.display='none';
+  document.getElementById('s3d-err').style.display='block';
+}
+function disposeBase(base){
+  try{
+    if(base.renderer){base.renderer.dispose();
+      var el=base.renderer.domElement;
+      if(el.parentNode)el.parentNode.removeChild(el);}
+  }catch(e){}
+}
+/* shared renderer/scene/camera; half = world half-extent in metres */
+function makeBase(half){
+  half=half||WORLD;
+  var wrap=document.getElementById('s3d-view');
+  wrap.innerHTML='';
+  var renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  wrap.appendChild(renderer.domElement);
+  var scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x0a1626);
+  scene.fog=new THREE.Fog(0x0a1626,half*1.7,half*3.6);
+  var camera=new THREE.PerspectiveCamera(55,1,2,half*10);
+  var controls=new OrbitControls(camera,renderer.domElement);
+  controls.enableDamping=true; controls.dampingFactor=0.08;
+  controls.maxPolarAngle=Math.PI*0.495;
+  controls.minDistance=Math.max(120,half*0.12); controls.maxDistance=half*2.8;
+  scene.add(new THREE.HemisphereLight(0xcfe4ff,0x24313f,0.95));
+  var sun=new THREE.DirectionalLight(0xfff1d6,1.6);
+  sun.position.set(half*0.6,half*0.95,half*0.45); scene.add(sun);
+  var fill=new THREE.DirectionalLight(0x9db8dd,0.35);
+  fill.position.set(-half*0.5,half*0.35,-half*0.4); scene.add(fill);
+  return {renderer:renderer,scene:scene,camera:camera,controls:controls,half:half};
+}
+function resample(raw,max){
+  if(raw.length<=max)return raw.slice();
+  var out=[],step=(raw.length-1)/(max-1),i;
+  for(i=0;i<max;i++)out.push(raw[Math.round(i*step)]);
+  return out;
+}
+
+/* ── REAL scene ── */
+function buildRealScene(r,base,rd){
+  var dem=rd.dem,osm=rd.osm,scene=base.scene,half=dem.half;
+  base.scene.fog.near=half*1.7; base.scene.fog.far=half*3.6;
+  base.camera.far=half*10; base.camera.updateProjectionMatrix();
+  base.controls.maxDistance=half*2.8;
+  base.controls.minDistance=Math.max(120,half*0.12);
+  function hAt(x,z){return (dem.sample(x,z)-dem.mn)*EXAG;}
+  var vrange=(dem.mx-dem.mn)*EXAG;
+  var k=half/WORLD; // world-scale factor vs legacy scene
+
+  buildTerrainReal(scene,hAt,half,vrange);
+
+  var pisteGroup=new THREE.Group(); scene.add(pisteGroup);
+  var pistes=osm.pistes.map(function(op,idx){
+    var raw=resample(op.raw,110),pts=[],i,m;
+    for(i=0;i<raw.length;i++){m=raw[i];pts.push(new THREE.Vector3(m.x,hAt(m.x,m.z)+2,m.z));}
+    var curve=new THREE.CatmullRomCurve3(pts);
+    var len=curve.getLength(),drop=pts[0].y-pts[pts.length-1].y,horiz=0;
+    for(i=1;i<pts.length;i++)horiz+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].z-pts[i-1].z);
+    var p={name:op.name||(op.diff.label+' '+(idx+1)),diff:op.diff,curve:curve,pts:pts,
+      width:op.diff.w,lenM:len*0.999,dropM:Math.max(0,drop),grade:horiz>0?drop/horiz*100:0,real:true};
+    var mesh=new THREE.Mesh(buildRibbon(pts,p.width,hAt,2),
+      new THREE.MeshStandardMaterial({color:op.diff.col,roughness:0.85,metalness:0,
+        emissive:op.diff.col,emissiveIntensity:0.06}));
+    mesh.userData.piste=p; p.mesh=mesh; p.mat=mesh.material;
+    pisteGroup.add(mesh);
+    return p;
+  });
+
+  var lifts=osm.lifts.map(function(ol){
+    var raw=resample(ol.raw,60),pts=[],i,m;
+    for(i=0;i<raw.length;i++){m=raw[i];pts.push(new THREE.Vector3(m.x,hAt(m.x,m.z)+14,m.z));}
+    return buildLiftMesh(scene,hAt,new THREE.CatmullRomCurve3(pts),k);
+  });
+
+  var samples=[];
+  pistes.forEach(function(p){for(var i=0;i<p.pts.length;i+=3)samples.push(p.pts[i]);});
+  buildTrees(scene,hAt,mulberry32(hashStr('trees'+r.name)),samples,half,4);
+  var base0=lowestEndpoint(pistes,hAt);
+  buildVillageAt(scene,hAt,mulberry32(hashStr('vil'+r.name)),base0.x,base0.z);
+
+  var skier=makeSkier(scene); skier.scale.setScalar(2.1*k);
+
+  S={name:r.name,mode:'real',renderer:base.renderer,scene:scene,camera:base.camera,
+     controls:base.controls,pistes:pistes,pisteGroup:pisteGroup,lifts:lifts,skier:skier,
+     sel:null,riding:null,raf:0,last:0,H:vrange,EX:half,vrange:vrange,k:k,
+     mapB:pisteBounds(pistes)};
+  setNote('Real terrain (elevation data) · real pistes & lifts © OpenStreetMap contributors — drag to orbit · pinch to zoom.');
+}
+function buildTerrainReal(scene,hAt,half,vrange){
+  var SEG=170,SIZE=half*2;
+  var g=new THREE.PlaneGeometry(SIZE,SIZE,SEG,SEG);
+  g.rotateX(-Math.PI/2);
+  var pos=g.attributes.position,colors=new Float32Array(pos.count*3);
+  var cSnow=new THREE.Color(0xe9f1fa),cShade=new THREE.Color(0xa9bcd4),
+      cRock=new THREE.Color(0x5d6772),tmp=new THREE.Color(),e=Math.max(20,half*0.012);
+  for(var i=0;i<pos.count;i++){
+    var x=pos.getX(i),z=pos.getZ(i),h=hAt(x,z);
+    pos.setY(i,h);
+    var sx=(hAt(x+e,z)-hAt(x-e,z))/(2*e),
+        sz=(hAt(x,z+e)-hAt(x,z-e))/(2*e),
+        sl=Math.sqrt(sx*sx+sz*sz);
+    tmp.copy(cSnow).lerp(cShade,Math.min(1,sl*1.15));
+    if(sl>1.15)tmp.lerp(cRock,Math.min(1,(sl-1.15)*1.1));
+    tmp.lerp(cSnow,Math.min(0.3,h/(vrange*1.4+1)));
+    colors[i*3]=tmp.r;colors[i*3+1]=tmp.g;colors[i*3+2]=tmp.b;
+  }
+  g.setAttribute('color',new THREE.BufferAttribute(colors,3));
+  g.computeVertexNormals();
+  scene.add(new THREE.Mesh(g,new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.93,metalness:0.02})));
+}
+function buildRibbon(pts,width,hAt,lift){
+  var n=pts.length,w=width/2;
+  var verts=new Float32Array(n*2*3),idx=[],i;
+  for(i=0;i<n;i++){
+    var a=pts[Math.max(0,i-1)],b=pts[Math.min(n-1,i+1)];
+    var dx=b.x-a.x,dz=b.z-a.z,l=Math.hypot(dx,dz)||1;dx/=l;dz/=l;
+    var nx=-dz,nz=dx;
+    var lx=pts[i].x+nx*w,lz=pts[i].z+nz*w,rx=pts[i].x-nx*w,rz=pts[i].z-nz*w;
+    verts[(i*2)*3]=lx;  verts[(i*2)*3+1]=hAt(lx,lz)+lift; verts[(i*2)*3+2]=lz;
+    verts[(i*2+1)*3]=rx;verts[(i*2+1)*3+1]=hAt(rx,rz)+lift;verts[(i*2+1)*3+2]=rz;
+    if(i<n-1){var kk=i*2;idx.push(kk,kk+1,kk+2,kk+1,kk+3,kk+2);}
+  }
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(verts,3));
+  g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+function buildLiftMesh(scene,hAt,curve,k){
+  var grp=new THREE.Group();
+  grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(60)),
+    new THREE.LineBasicMaterial({color:0x8b98a8})));
+  var tm=new THREE.MeshStandardMaterial({color:0x4b5563,roughness:0.7});
+  var nk=6,t,v2,gy,h;
+  for(var q=1;q<nk;q++){
+    t=q/nk;v2=curve.getPoint(t);gy=hAt(v2.x,v2.z);h=Math.max(4*k,v2.y-gy);
+    var cyl=new THREE.Mesh(new THREE.CylinderGeometry(2.2*k,2.8*k,h,6),tm);
+    cyl.position.set(v2.x,gy+h/2,v2.z);grp.add(cyl);
+    var arm=new THREE.Mesh(new THREE.BoxGeometry(16*k,2*k,2*k),tm);
+    arm.position.set(v2.x,v2.y+1*k,v2.z);grp.add(arm);
+  }
+  var cm=new THREE.MeshStandardMaterial({color:0xf59e0b,roughness:0.6}),chairs=[];
+  for(var c=0;c<8;c++){
+    var m=new THREE.Mesh(new THREE.BoxGeometry(5*k,7*k,2.5*k),cm);
+    grp.add(m);chairs.push(m);
+  }
+  scene.add(grp);
+  return {curve:curve,chairs:chairs,off:Math.random(),k:k};
+}
+function buildTrees(scene,hAt,rand,samples,half,minH){
+  var inst=new THREE.InstancedMesh(new THREE.ConeGeometry(7,26,7),
+    new THREE.MeshStandardMaterial({color:0x1e4d33,roughness:0.9}),520);
+  var dummy=new THREE.Object3D(),placed=0,tries=0;
+  while(placed<520&&tries<4000){
+    tries++;
+    var x=(rand()*2-1)*half*0.92,z=(rand()*2-1)*half*0.92,h=hAt(x,z);
+    if(h<minH)continue;
+    var ok=true;
+    for(var s=0;s<samples.length;s++){
+      var dx=x-samples[s].x,dz=z-samples[s].z;
+      if(dx*dx+dz*dz<3600){ok=false;break;}
+    }
+    if(!ok)continue;
+    var sc=0.7+rand()*0.9;
+    dummy.position.set(x,h+11*sc,z);dummy.scale.set(sc,sc,sc);
+    dummy.rotation.y=rand()*Math.PI*2;
+    dummy.updateMatrix();inst.setMatrixAt(placed,dummy.matrix);placed++;
+  }
+  inst.count=placed;inst.instanceMatrix.needsUpdate=true;scene.add(inst);
+}
+function lowestEndpoint(pistes,hAt){
+  var bx=0,bz=0,bh=1e18,i,p;
+  for(i=0;i<pistes.length;i++){
+    p=pistes[i];
+    var a=p.pts[0],b=p.pts[p.pts.length-1];
+    if(a.y<bh){bh=a.y;bx=a.x;bz=a.z;}
+    if(b.y<bh){bh=b.y;bx=b.x;bz=b.z;}
+  }
+  return {x:bx,z:bz};
+}
+function buildVillageAt(scene,hAt,rand,cx,cz){
+  var g=new THREE.Group();
+  var wallM=new THREE.MeshStandardMaterial({color:0xd8c9a8,roughness:0.9});
+  var roofM=new THREE.MeshStandardMaterial({color:0x5b3a2a,roughness:0.9});
+  for(var i=0;i<9;i++){
+    var az=rand()*Math.PI*2,rr=60+rand()*200;
+    var x=cx+rr*Math.sin(az),z=cz+rr*Math.cos(az),gy=hAt(x,z);
+    var w=18+rand()*22,dpt=14+rand()*16,hgt=10+rand()*10,ry=rand()*Math.PI;
+    var b=new THREE.Mesh(new THREE.BoxGeometry(w,hgt,dpt),wallM);
+    b.position.set(x,gy+hgt/2,z);b.rotation.y=ry;g.add(b);
+    var rf=new THREE.Mesh(new THREE.ConeGeometry(Math.max(w,dpt)*0.72,8,4),roofM);
+    rf.position.set(x,gy+hgt+4,z);rf.rotation.y=Math.PI/4+ry;g.add(rf);
+  }
+  scene.add(g);
+}
+function pisteBounds(pistes){
+  var mnx=1e18,mxx=-1e18,mnz=1e18,mxz=-1e18,i,j,p;
+  for(i=0;i<pistes.length;i++){p=pistes[i];
+    for(j=0;j<p.pts.length;j++){
+      var v=p.pts[j];
+      if(v.x<mnx)mnx=v.x;if(v.x>mxx)mxx=v.x;
+      if(v.z<mnz)mnz=v.z;if(v.z>mxz)mxz=v.z;
+    }}
+  var px=(mxx-mnx)*0.08+50,pz=(mxz-mnz)*0.08+50;
+  return {minx:mnx-px,maxx:mxx+px,minz:mnz-pz,maxz:mxz+pz};
+}
+function makeSkier(scene){
+  var skier=new THREE.Group();
+  skier.add(new THREE.Mesh(new THREE.SphereGeometry(5,14,10),
+    new THREE.MeshStandardMaterial({color:0xff7a1a,emissive:0xff7a1a,emissiveIntensity:0.6,roughness:0.4})));
+  skier.visible=false; scene.add(skier);
+  return skier;
+}
+
+/* ── LEGACY procedural scene (fallback when real data is unavailable) ── */
+function makeHeight(seed,H){
+  var rand=mulberry32(hashStr('mtn'+seed));
+  var nz=makeNoise(rand);
+  var px=(rand()-0.5)*360, pz=(rand()-0.5)*360;
+  return function(x,z){
+    var dx=(x-px)/1180, dz=(z-pz)/1480, r2=dx*dx+dz*dz;
+    var h=H*Math.exp(-r2*2.6);
+    h+=H*0.11*(nz(x*0.0016+7.3,z*0.0016+2.1)-0.5)*2;
+    h+=H*0.035*(nz(x*0.006+1.7,z*0.006+8.4)-0.5)*2;
+    return h>0?h:0;
+  };
+}
+function buildProceduralScene(r,base){
   var vertFt=parseVert(r.vert);
   var H=Math.min(46,Math.max(9,vertFt/95));
   var rand=mulberry32(hashStr('piste'+r.name));
   var heightAt=makeHeight(r.name,H);
   var scaleFt=vertFt/H;
-  var wrap=document.getElementById('s3d-view');
-  wrap.innerHTML='';
-  var renderer;
-  try{ renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'}); }
-  catch(e){ document.getElementById('s3d-load').style.display='none'; document.getElementById('s3d-err').style.display='block'; return; }
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
-  wrap.appendChild(renderer.domElement);
+  var scene=base.scene;
 
-  var scene=new THREE.Scene();
-  scene.background=new THREE.Color(0x0a1626);
-  scene.fog=new THREE.Fog(0x0a1626,2600,5600);
-  var camera=new THREE.PerspectiveCamera(55,1,1,14000);
-  var controls=new OrbitControls(camera,renderer.domElement);
-  controls.enableDamping=true; controls.dampingFactor=0.08;
-  controls.maxPolarAngle=Math.PI*0.495; controls.minDistance=220; controls.maxDistance=4300;
-
-  scene.add(new THREE.HemisphereLight(0xcfe4ff,0x24313f,0.95));
-  var sun=new THREE.DirectionalLight(0xfff1d6,1.6); sun.position.set(900,1400,700); scene.add(sun);
-  var fill=new THREE.DirectionalLight(0x9db8dd,0.35); fill.position.set(-800,500,-600); scene.add(fill);
-
-  buildTerrain(scene,heightAt,H);
+  buildTerrainProc(scene,heightAt,H);
   var pistes=genPistes(r,rand,heightAt,scaleFt);
   var pisteGroup=new THREE.Group(); scene.add(pisteGroup);
   pistes.forEach(function(p){
-    var mesh=new THREE.Mesh(buildRibbon(p,heightAt),
-      new THREE.MeshStandardMaterial({color:p.diff.col,roughness:0.85,metalness:0,emissive:p.diff.col,emissiveIntensity:0.06}));
+    var mesh=new THREE.Mesh(buildRibbon(p.pts,p.width,heightAt,1.6),
+      new THREE.MeshStandardMaterial({color:p.diff.col,roughness:0.85,metalness:0,
+        emissive:p.diff.col,emissiveIntensity:0.06}));
     mesh.userData.piste=p; p.mesh=mesh; p.mat=mesh.material;
     pisteGroup.add(mesh);
   });
-  var lifts=[buildLift(scene,heightAt,rand,0.12,1330,330),buildLift(scene,heightAt,rand,-0.52,1280,520)];
-  buildTrees(scene,heightAt,rand,pistes);
-  buildVillage(scene,heightAt,rand);
+  var lifts=[buildLiftProc(scene,heightAt,rand,0.12,1330,330),
+             buildLiftProc(scene,heightAt,rand,-0.52,1280,520)];
+  var samples=[];
+  pistes.forEach(function(p){for(var i=0;i<p.pts.length;i+=4)samples.push(p.pts[i]);});
+  buildTrees(scene,heightAt,rand,samples,WORLD,5);
+  buildVillageProc(scene,heightAt,rand);
+  var skier=makeSkier(scene);
 
-  var skier=new THREE.Group();
-  skier.add(new THREE.Mesh(new THREE.SphereGeometry(5,14,10),
-    new THREE.MeshStandardMaterial({color:0xff7a1a,emissive:0xff7a1a,emissiveIntensity:0.6,roughness:0.4})));
-  skier.visible=false; scene.add(skier);
-
-  S={name:r.name,renderer:renderer,scene:scene,camera:camera,controls:controls,
-     pistes:pistes,pisteGroup:pisteGroup,lifts:lifts,skier:skier,
-     sel:null,riding:null,raf:0,last:0,H:H};
-
-  // tap-to-select on the 3D view (distinguished from orbit drags)
-  var ray=new THREE.Raycaster(), ptr=new THREE.Vector2(), downXY=null;
-  renderer.domElement.addEventListener('pointerdown',function(e){downXY=[e.clientX,e.clientY];});
-  renderer.domElement.addEventListener('pointerup',function(e){
-    if(!downXY) return;
-    var dx=e.clientX-downXY[0],dy=e.clientY-downXY[1]; downXY=null;
-    if(dx*dx+dy*dy>64||(S&&S.riding)) return;
-    var rc=renderer.domElement.getBoundingClientRect();
-    ptr.x=((e.clientX-rc.left)/rc.width)*2-1;
-    ptr.y=-((e.clientY-rc.top)/rc.height)*2+1;
-    ray.setFromCamera(ptr,S.camera);
-    var hits=ray.intersectObjects(S.pisteGroup.children,false);
-    if(hits.length) selectPiste(hits[0].object.userData.piste);
-  });
-
-  resetCam();
-  buildChips();
-  var def=pistes.find(function(p){return p.diff.k==='blue';})||pistes[0];
-  document.getElementById('s3d-load').style.display='none';
-  document.getElementById('s3d-stage').style.display='block';
-  requestAnimationFrame(function(){
-    if(!S||S.name!==r.name) return;
-    sizeRenderer(); selectPiste(def); startLoop();
-  });
+  S={name:r.name,mode:'proc',renderer:base.renderer,scene:scene,camera:base.camera,
+     controls:base.controls,pistes:pistes,pisteGroup:pisteGroup,lifts:lifts,skier:skier,
+     sel:null,riding:null,raf:0,last:0,H:H,EX:WORLD,k:1,
+     mapB:{minx:-WORLD*1.15,maxx:WORLD*1.15,minz:-WORLD*1.15,maxz:WORLD*1.15}};
+  setNote('Stylized 3D preview — terrain & piste layout are illustrative, scaled to this resort\u2019s real vertical drop and difficulty mix. Drag to orbit · pinch to zoom.');
 }
-
-function buildTerrain(scene,heightAt,H){
+function buildTerrainProc(scene,heightAt,H){
   var SEG=150,SIZE=WORLD*2.3;
   var g=new THREE.PlaneGeometry(SIZE,SIZE,SEG,SEG);
   g.rotateX(-Math.PI/2);
@@ -6080,7 +6409,6 @@ function buildTerrain(scene,heightAt,H){
   g.computeVertexNormals();
   scene.add(new THREE.Mesh(g,new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.93,metalness:0.02})));
 }
-
 function genPistes(r,rand,heightAt,scaleFt){
   var acres=parseFloat(String(r.acres||'1000').replace(/[^0-9.]/g,''))||1000;
   var total=acres>4000?14:acres>1500?12:acres>400?10:8;
@@ -6093,7 +6421,6 @@ function genPistes(r,rand,heightAt,scaleFt){
   for(i=0;i<4;i++) if(mix[i]>0&&counts[i]===0) counts[i]=1;
   var list=[];
   for(i=0;i<4;i++) for(k=0;k<counts[i];k++) list.push(i);
-  // interleave difficulties so neighbouring lines differ
   list.sort(function(){return rand()-0.5;});
   var out=[],seq=[0,0,0,0];
   for(i=0;i<list.length;i++){
@@ -6120,72 +6447,23 @@ function makePiste(seed,d,seq,num,den,rand,heightAt,scaleFt){
   var len=curve.getLength(), drop=pts[0].y-pts[pts.length-1].y, horiz=0;
   for(var q=1;q<pts.length;q++){var a=pts[q-1],b=pts[q];horiz+=Math.hypot(b.x-a.x,b.z-a.z);}
   return {name:d.label+' '+(seq+1),diff:d,curve:curve,pts:pts,width:d.w,
-    lenFt:len*scaleFt,dropFt:Math.max(0,drop)*scaleFt,grade:horiz>0?drop/horiz*100:0};
+    lenFt:len*scaleFt,lenM:len*scaleFt*0.3048,
+    dropFt:Math.max(0,drop)*scaleFt,dropM:Math.max(0,drop)*scaleFt*0.3048,
+    grade:horiz>0?drop/horiz*100:0};
 }
-function buildRibbon(p,heightAt){
-  var pts=p.pts,w=p.width/2,n=pts.length;
-  var verts=new Float32Array(n*2*3),idx=[],i;
-  for(i=0;i<n;i++){
-    var a=pts[Math.max(0,i-1)],b=pts[Math.min(n-1,i+1)];
-    var dx=b.x-a.x,dz=b.z-a.z,l=Math.hypot(dx,dz)||1;dx/=l;dz/=l;
-    var nx=-dz,nz=dx;
-    var lx=pts[i].x+nx*w,lz=pts[i].z+nz*w,rx=pts[i].x-nx*w,rz=pts[i].z-nz*w;
-    verts[(i*2)*3]=lx;  verts[(i*2)*3+1]=heightAt(lx,lz)+1.6; verts[(i*2)*3+2]=lz;
-    verts[(i*2+1)*3]=rx;verts[(i*2+1)*3+1]=heightAt(rx,rz)+1.6;verts[(i*2+1)*3+2]=rz;
-    if(i<n-1){var k=i*2;idx.push(k,k+1,k+2,k+1,k+3,k+2);}
-  }
-  var g=new THREE.BufferGeometry();
-  g.setAttribute('position',new THREE.BufferAttribute(verts,3));
-  g.setIndex(idx); g.computeVertexNormals();
-  return g;
-}
-function buildLift(scene,heightAt,rand,az,r0,r1){
+function buildLiftProc(scene,heightAt,rand,az,r0,r1){
   function P(a,rr){return new THREE.Vector3(rr*Math.sin(a),0,rr*Math.cos(a));}
   var a=P(az,r0),b=P(az,r1),N=40,pts=[],i,t;
   for(i=0;i<=N;i++){t=i/N;var v=a.clone().lerp(b,t);v.y=heightAt(v.x,v.z)+16;pts.push(v);}
-  var curve=new THREE.CatmullRomCurve3(pts);
-  var grp=new THREE.Group();
-  grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(60)),
-    new THREE.LineBasicMaterial({color:0x8b98a8})));
-  var tm=new THREE.MeshStandardMaterial({color:0x4b5563,roughness:0.7});
-  for(var k=1;k<6;k++){
-    t=k/6;var v2=curve.getPoint(t),gy=heightAt(v2.x,v2.z),h=v2.y-gy;
-    var cyl=new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.8,h,6),tm);
-    cyl.position.set(v2.x,gy+h/2,v2.z);grp.add(cyl);
-    var arm=new THREE.Mesh(new THREE.BoxGeometry(16,2,2),tm);
-    arm.position.set(v2.x,v2.y+1,v2.z);grp.add(arm);
-  }
-  var cm=new THREE.MeshStandardMaterial({color:0xf59e0b,roughness:0.6}),chairs=[];
-  for(var c=0;c<9;c++){var m=new THREE.Mesh(new THREE.BoxGeometry(5,7,2.5),cm);grp.add(m);chairs.push(m);}
-  scene.add(grp);
-  return {curve:curve,chairs:chairs,off:rand()};
+  return buildLiftMesh(scene,heightAt,new THREE.CatmullRomCurve3(pts),1);
 }
-function buildTrees(scene,heightAt,rand,pistes){
-  var samples=[];
-  pistes.forEach(function(p){for(var i=0;i<p.pts.length;i+=4)samples.push(p.pts[i]);});
-  var inst=new THREE.InstancedMesh(new THREE.ConeGeometry(7,26,7),
-    new THREE.MeshStandardMaterial({color:0x1e4d33,roughness:0.9}),520);
-  var dummy=new THREE.Object3D(),placed=0,tries=0;
-  while(placed<520&&tries<4000){
-    tries++;
-    var x=(rand()*2-1)*1500,z=(rand()*2-1)*1500,h=heightAt(x,z);
-    if(h<5) continue;
-    var ok=true;
-    for(var s=0;s<samples.length;s++){var dx=x-samples[s].x,dz=z-samples[s].z;if(dx*dx+dz*dz<3600){ok=false;break;}}
-    if(!ok) continue;
-    var sc=0.7+rand()*0.9;
-    dummy.position.set(x,h+11*sc,z);dummy.scale.set(sc,sc,sc);dummy.rotation.y=rand()*Math.PI*2;
-    dummy.updateMatrix();inst.setMatrixAt(placed,dummy.matrix);placed++;
-  }
-  inst.count=placed;inst.instanceMatrix.needsUpdate=true;scene.add(inst);
-}
-function buildVillage(scene,heightAt,rand){
+function buildVillageProc(scene,heightAt,rand){
   var g=new THREE.Group();
   var wallM=new THREE.MeshStandardMaterial({color:0xd8c9a8,roughness:0.9});
   var roofM=new THREE.MeshStandardMaterial({color:0x5b3a2a,roughness:0.9});
   for(var i=0;i<9;i++){
-    var az=(rand()-0.5)*0.9,r=1380+rand()*160;
-    var x=r*Math.sin(az),z=r*Math.cos(az),gy=heightAt(x,z);
+    var az=(rand()-0.5)*0.9,rr=1380+rand()*160;
+    var x=rr*Math.sin(az),z=rr*Math.cos(az),gy=heightAt(x,z);
     var w=18+rand()*22,dpt=14+rand()*16,hgt=10+rand()*10,ry=rand()*Math.PI;
     var b=new THREE.Mesh(new THREE.BoxGeometry(w,hgt,dpt),wallM);
     b.position.set(x,gy+hgt/2,z);b.rotation.y=ry;g.add(b);
@@ -6195,11 +6473,51 @@ function buildVillage(scene,heightAt,rand){
   scene.add(g);
 }
 
-/* ── camera / loop ── */
+/* ── shared: finish, camera, loop ── */
+function finishBuild(r,tok){
+  if(!alive(r,tok))return;
+  var ray=new THREE.Raycaster(), ptr=new THREE.Vector2(), downXY=null;
+  var cv=S.renderer.domElement;
+  cv.addEventListener('pointerdown',function(e){downXY=[e.clientX,e.clientY];});
+  cv.addEventListener('pointerup',function(e){
+    if(!downXY) return;
+    var dx=e.clientX-downXY[0],dy=e.clientY-downXY[1]; downXY=null;
+    if(dx*dx+dy*dy>64||(S&&S.riding)) return;
+    var rc=cv.getBoundingClientRect();
+    ptr.x=((e.clientX-rc.left)/rc.width)*2-1;
+    ptr.y=-((e.clientY-rc.top)/rc.height)*2+1;
+    ray.setFromCamera(ptr,S.camera);
+    var hits=ray.intersectObjects(S.pisteGroup.children,false);
+    if(hits.length) selectPiste(hits[0].object.userData.piste);
+  });
+  resetCam();
+  buildChips();
+  var def=null,i;
+  if(S.mode==='real'){
+    var blues=S.pistes.filter(function(p){return p.diff.k==='blue';});
+    var pool=blues.length?blues:S.pistes;
+    def=pool[(pool.length/2)|0]||S.pistes[0];
+  }else{
+    for(i=0;i<S.pistes.length;i++)if(S.pistes[i].diff.k==='blue'){def=S.pistes[i];break;}
+    def=def||S.pistes[0];
+  }
+  document.getElementById('s3d-load').style.display='none';
+  document.getElementById('s3d-stage').style.display='block';
+  requestAnimationFrame(function(){
+    if(!alive(r,tok)) return;
+    sizeRenderer(); selectPiste(def); startLoop();
+  });
+}
 function resetCam(){
   if(!S) return;
-  S.camera.position.set(1050,S.H*9+520,2350);
-  S.controls.target.set(0,S.H*0.42,250);
+  if(S.mode==='real'){
+    var half=S.EX,vh=S.vrange||half*0.4;
+    S.camera.position.set(half*0.62,vh*1.15+half*0.42,half*1.5);
+    S.controls.target.set(0,vh*0.32,0);
+  }else{
+    S.camera.position.set(1050,S.H*9+520,2350);
+    S.controls.target.set(0,S.H*0.42,250);
+  }
   S.controls.update();
 }
 function sizeRenderer(){
@@ -6220,7 +6538,7 @@ function tick(now){
   for(var li=0;li<S.lifts.length;li++){var L=S.lifts[li];
     for(c=0;c<L.chairs.length;c++){
       var tt=(t*0.008+L.off+c/L.chairs.length)%1,v=L.curve.getPoint(tt);
-      L.chairs[c].position.set(v.x,v.y-8,v.z);
+      L.chairs[c].position.set(v.x,v.y-8*(L.k||1),v.z);
     }}
   if(S.riding) stepRide(dt);
   S.renderer.render(S.scene,S.camera);
@@ -6232,9 +6550,9 @@ function selectPiste(p){
   S.sel=p;
   S.pistes.forEach(function(q){q.mat.emissiveIntensity=(q===p?0.55:0.06);});
   document.getElementById('s3d-linename').textContent=p.name;
-  document.getElementById('s3d-linediff').textContent=p.diff.label;
-  document.getElementById('s3d-vert').textContent=Math.round(p.dropFt).toLocaleString()+' ft';
-  document.getElementById('s3d-len').textContent=(p.lenFt/5280).toFixed(1)+' mi';
+  document.getElementById('s3d-linediff').textContent=p.diff.label+(p.real?' · real':'');
+  document.getElementById('s3d-vert').textContent=Math.round(p.dropM*3.28084).toLocaleString()+' ft';
+  document.getElementById('s3d-len').textContent=(p.lenM/1609.34).toFixed(1)+' mi';
   document.getElementById('s3d-grade').textContent=Math.round(p.grade)+'%';
   var chips=document.getElementById('s3d-chips').children;
   for(var i=0;i<chips.length;i++)chips[i].classList.toggle('on',S.pistes[i]===p);
@@ -6244,17 +6562,21 @@ function buildChips(){
   var box=document.getElementById('s3d-chips');box.innerHTML='';
   S.pistes.forEach(function(p){
     var b=document.createElement('button');b.className='s3d-chip';
-    b.innerHTML='<i style="background:'+p.diff.css+'"></i>'+p.name;
+    b.innerHTML='<i style="background:'+p.diff.css+'"></i>'+escapeHtml(p.name);
     b.onclick=function(){selectPiste(p);};
     box.appendChild(b);
   });
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});
 }
 
 /* ── ride mode ── */
 function s3dRide(){
   if(!S||!S.sel||S.riding) return;
   var p=S.sel;
-  S.riding={p:p,t:0,dur:Math.min(40,Math.max(10,p.lenFt/40))};
+  S.riding={p:p,t:0,dur:Math.min(45,Math.max(12,p.lenM/45))};
   S.skier.visible=true;
   S.controls.enabled=false;
   document.getElementById('s3d-ride').style.display='none';
@@ -6267,10 +6589,11 @@ function stepRide(dt){
   if(R.t>=1){R.t=1;stopRide(true);}
   var tt=Math.min(1,R.t);
   var pos=p.curve.getPointAt(tt),tan=p.curve.getTangentAt(tt);
-  S.skier.position.set(pos.x,pos.y+4,pos.z);
-  var k=1-Math.exp(-2.5*dt);
-  S.camera.position.lerp(new THREE.Vector3(pos.x-tan.x*150,pos.y+85,pos.z-tan.z*150),k);
-  S.controls.target.lerp(new THREE.Vector3(pos.x,pos.y+6,pos.z),1-Math.exp(-4*dt));
+  S.skier.position.set(pos.x,pos.y+4*S.k,pos.z);
+  var kk=1-Math.exp(-2.5*dt);
+  var back=150*S.k,up=85*S.k;
+  S.camera.position.lerp(new THREE.Vector3(pos.x-tan.x*back,pos.y+up,pos.z-tan.z*back),kk);
+  S.controls.target.lerp(new THREE.Vector3(pos.x,pos.y+6*S.k,pos.z),1-Math.exp(-4*dt));
   S.camera.lookAt(S.controls.target);
   document.getElementById('s3d-progfill').style.width=(R.t*100)+'%';
   drawMap();
@@ -6288,8 +6611,9 @@ function stopRide(done){
 
 /* ── 2D trail map ── */
 function w2m(x,z,W,Hh){
-  var pad=26,s=Math.min(W-pad*2,Hh-pad*2)/(WORLD*2.15);
-  return [W/2+x*s,Hh/2+z*s*0.92];
+  var b=S.mapB,pad=26;
+  var s=Math.min((W-pad*2)/(b.maxx-b.minx),(Hh-pad*2)/(b.maxz-b.minz));
+  return [W/2+(x-(b.minx+b.maxx)/2)*s, Hh/2+(z-(b.minz+b.maxz)/2)*s];
 }
 function sizeMap(){
   var c=document.getElementById('s3d-map');if(!c||!S) return;
@@ -6349,6 +6673,7 @@ function mapTap(e){
 
 /* ── teardown ── */
 function disposeViewer(){
+  buildId++;
   s3dPause();
   if(S){
     try{
@@ -6378,6 +6703,7 @@ window.s3dStopRide=function(){stopRide(false);};
 window.s3dResetCam=function(){resetCam();};
 
 })();
+
 
 </script>
 </body>
