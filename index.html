@@ -436,10 +436,27 @@
 #s3d-stop{background:linear-gradient(135deg,#ef4444,#b91c1c)!important;border:none!important;color:#fff!important}
 #s3d-prog{position:absolute;left:10px;right:10px;bottom:10px;height:5px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden;display:none}
 #s3d-progfill{height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#a78bfa);border-radius:3px}
-#s3d-stats{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:6px;margin:10px 0}
-.s3d-stat{background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:7px 9px;min-width:0}
-.s3d-stat span{display:block;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--snow);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#s3d-stats{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr;gap:6px;margin:10px 0}
+.s3d-stat{background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;min-width:0}
+.s3d-stat span{display:block;font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--snow);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .s3d-stat .s3d-sub{font-family:'DM Mono',monospace;font-size:8.5px;color:var(--text4);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;font-weight:400}
+#s3d-legend{display:flex;gap:12px;flex-wrap:wrap;margin:2px 0 8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)}
+#s3d-legend i{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:4px}
+#s3d-fshdr{display:none}
+#s3d-compass{position:absolute;top:10px;right:10px;width:44px;height:44px;border-radius:50%;background:rgba(10,20,32,.72);border:1px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:5}
+#s3d-compass .ndl{color:#ff6b6b;font-size:15px;line-height:1;transition:transform .05s linear}
+#s3d-compass .nlt{color:var(--text2);font-size:8px;font-family:'DM Mono',monospace;line-height:1;margin-top:1px}
+#s3d-labelbtn.on{background:rgba(56,189,248,.25)!important;border-color:var(--ice)!important;color:var(--snow)!important}
+/* fullscreen 3D */
+#s3d-stage.full{position:fixed;inset:0;z-index:9000;background:#0b1420;display:flex!important;flex-direction:column;overflow:hidden}
+#s3d-stage.full #s3d-fshdr{display:flex;align-items:center;gap:12px;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;flex-shrink:0;border-bottom:1px solid var(--border)}
+#s3d-fstitle{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--snow)}
+#s3d-fssub{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);margin-top:2px}
+#s3d-fsclose{background:rgba(255,255,255,.07);border:1px solid var(--border2);color:var(--text);width:44px;height:44px;border-radius:50%;font-size:17px;cursor:pointer;flex-shrink:0;touch-action:manipulation}
+#s3d-stage.full #s3d-viewwrap{flex:1 1 auto;height:auto;min-height:0;border-radius:0;border:none}
+#s3d-stage.full #s3d-bottom{flex-shrink:0;overflow-y:auto;max-height:40dvh;padding:8px 12px calc(12px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+#s3d-stage.full #s3d-mapwrap{margin-bottom:8px}
+#s3d-viewwrap.fullbtn-hide #s3d-expandbtn{display:none}
 #s3d-mapwrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border2);background:#0a1420;margin-bottom:10px}
 #s3d-map{display:block;width:100%;height:230px;touch-action:manipulation;cursor:pointer}
 #s3d-maplabel{position:absolute;top:7px;left:10px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.55);pointer-events:none}
@@ -818,27 +835,38 @@ body.apt-mode #apt-bar{display:flex}
       <div class="tc" id="tc-3d">
         <div id="s3d-load" class="ldg">Building 3D mountain…</div>
         <div id="s3d-stage" style="display:none">
+          <div id="s3d-fshdr">
+            <button id="s3d-fsclose" onclick="s3dCollapse()">✕</button>
+            <div><div id="s3d-fstitle">3D</div><div id="s3d-fssub">drag to orbit · pinch to zoom</div></div>
+          </div>
           <div id="s3d-viewwrap">
             <div id="s3d-view"></div>
             <div id="s3d-vhud">
               <button id="s3d-ride" onclick="s3dRide()">▶ Ride this line</button>
               <button id="s3d-stop" onclick="s3dStopRide()" style="display:none">⏹ Stop</button>
               <button onclick="s3dResetCam()">⟲ View</button>
+              <button id="s3d-labelbtn" onclick="s3dLabels()">🏷 Labels</button>
+              <button id="s3d-expandbtn" onclick="s3dExpand()">⛶ Full</button>
             </div>
+            <div id="s3d-compass" title="North"><div class="ndl">▲</div><div class="nlt">N</div></div>
             <div id="s3d-prog"><div id="s3d-progfill"></div></div>
           </div>
+          <div id="s3d-bottom">
           <div id="s3d-stats">
             <div class="s3d-stat"><span id="s3d-linename">—</span><span class="s3d-sub" id="s3d-linediff">tap a line</span></div>
             <div class="s3d-stat"><span id="s3d-vert">—</span><span class="s3d-sub">vertical</span></div>
             <div class="s3d-stat"><span id="s3d-len">—</span><span class="s3d-sub">length</span></div>
             <div class="s3d-stat"><span id="s3d-grade">—</span><span class="s3d-sub">avg grade</span></div>
+            <div class="s3d-stat"><span id="s3d-steep">—</span><span class="s3d-sub">steepest</span></div>
           </div>
           <div id="s3d-mapwrap">
             <canvas id="s3d-map"></canvas>
             <div id="s3d-maplabel">trail map · tap a line</div>
           </div>
+          <div id="s3d-legend"></div>
           <div id="s3d-chips"></div>
           <div class="s3d-note">Stylized 3D preview — terrain &amp; piste layout are illustrative, scaled to this resort's real vertical drop and difficulty mix. Drag to orbit · pinch to zoom.</div>
+          </div>
         </div>
         <div class="err" id="s3d-err" style="display:none">3D couldn't start on this device.</div>
       </div>
@@ -6274,14 +6302,23 @@ function buildRealScene(r,base,dem,osm){
     var raw=resample(op.raw,110),pts=[],i,m;
     for(i=0;i<raw.length;i++){m=raw[i];pts.push(new THREE.Vector3(m.x,hAt(m.x,m.z)+2,m.z));}
     var curve=new THREE.CatmullRomCurve3(pts);
-    var len=curve.getLength(),drop=pts[0].y-pts[pts.length-1].y,horiz=0;
-    for(i=1;i<pts.length;i++)horiz+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].z-pts[i-1].z);
+    /* true-metre measurements from the DEM (y is vertically exaggerated, so never measure from it) */
+    var tH=function(x,z){return dem.sample(x,z);};
+    var len=0,horiz=0,dropSum=0;
+    for(i=1;i<raw.length;i++){
+      var dx=raw[i].x-raw[i-1].x,dz=raw[i].z-raw[i-1].z;
+      var hs=Math.hypot(dx,dz);horiz+=hs;
+      var dh=tH(raw[i-1].x,raw[i-1].z)-tH(raw[i].x,raw[i].z);
+      dropSum+=dh; len+=Math.hypot(hs,Math.max(0,dh));
+    }
+    var trueDrop=Math.max(0,tH(raw[0].x,raw[0].z)-tH(raw[raw.length-1].x,raw[raw.length-1].z));
     var nm=op.name||(op.diff.label+' '+(idx+1));
     var tree=!!(op.glade||op.treeFrac>=0.4||/glade/i.test(nm));
     var treeSrc=op.glade?'glade tag':(op.treeFrac>=0.4?'forest cover':(/glade/i.test(nm)?'name':''));
     var p={name:nm,diff:op.diff,curve:curve,pts:pts,tree:tree,treeSrc:treeSrc,
       treeFrac:op.treeFrac||0,
-      width:op.diff.w,lenM:len,dropM:Math.max(0,drop),grade:horiz>0?drop/horiz*100:0,real:true};
+      width:op.diff.w,lenM:len,dropM:trueDrop,grade:horiz>0?dropSum/horiz*100:0,
+      maxGrade:steepestGrade(raw,tH,1),real:true};
     var mesh=new THREE.Mesh(buildRibbon(pts,p.width,hAt,2),
       new THREE.MeshStandardMaterial({color:op.diff.col,roughness:0.85,metalness:0,
         emissive:op.diff.col,emissiveIntensity:0.06}));
@@ -6294,6 +6331,11 @@ function buildRealScene(r,base,dem,osm){
       var ln=new THREE.Line(lg,ld); ln.computeLineDistances();
       pisteGroup.add(ln); p.treeLine=ln;
     }
+    /* floating name label at the run midpoint (hidden until Labels is on / selected) */
+    var mid=curve.getPointAt(0.5);
+    var lab=makeLabel((tree?'🌲 ':'')+nm,op.diff.css,120*k);
+    lab.position.set(mid.x,mid.y+70*k,mid.z); lab.visible=false;
+    scene.add(lab); p.label=lab;
     return p;
   });
 
@@ -6308,12 +6350,24 @@ function buildRealScene(r,base,dem,osm){
   buildTrees(scene,hAt,mulberry32(hashStr('trees'+r.name)),samples,half,4);
   var base0=lowestEndpoint(pistes,hAt);
   buildVillageAt(scene,hAt,mulberry32(hashStr('vil'+r.name)),base0.x,base0.z);
+  /* directional reference labels: base village + summit (highest terrain point) */
+  var baseLab=makeLabel('▼ BASE','#f59e0b',150*k);
+  baseLab.position.set(base0.x,hAt(base0.x,base0.z)+120*k,base0.z);
+  scene.add(baseLab);
+  var sx=0,sz=0,sh=-1e18;
+  for(var gx=-half;gx<=half;gx+=half/18)for(var gz=-half;gz<=half;gz+=half/18){
+    var gh=hAt(gx,gz); if(gh>sh){sh=gh;sx=gx;sz=gz;}
+  }
+  var sumLab=makeLabel('▲ SUMMIT','#e2e8f0',150*k);
+  sumLab.position.set(sx,sh+120*k,sz);
+  scene.add(sumLab);
 
   var skier=makeSkier(scene); skier.scale.setScalar(2.1*k);
 
   S={name:r.name,mode:'real',renderer:base.renderer,scene:scene,camera:base.camera,
      controls:base.controls,pistes:pistes,pisteGroup:pisteGroup,lifts:lifts,skier:skier,
      sel:null,riding:null,raf:0,last:0,H:vrange,EX:half,vrange:vrange,k:k,
+     labelsOn:false,treeOnly:false,
      mapB:pisteBounds(pistes)};
   setNote('Real terrain (elevation data) · real pistes & lifts © OpenStreetMap contributors · 🌲 = tree run (OSM glade tag or forest cover) — drag to orbit · pinch to zoom.');
 }
@@ -6442,6 +6496,43 @@ function makeSkier(scene){
   return skier;
 }
 
+/* floating text label sprite; hWorld = label height in world units */
+function makeLabel(text,accent,hWorld){
+  var fs=46,padX=26,padY=14;
+  var c=document.createElement('canvas'),x=c.getContext('2d');
+  x.font='700 '+fs+'px "DM Sans",system-ui,sans-serif';
+  var tw=Math.ceil(x.measureText(text).width);
+  c.width=tw+padX*2; c.height=fs+padY*2;
+  x.font='700 '+fs+'px "DM Sans",system-ui,sans-serif';
+  x.fillStyle='rgba(8,15,25,0.82)';
+  var r=20,w=c.width,h=c.height;
+  x.beginPath();
+  x.moveTo(r,0);x.lineTo(w-r,0);x.quadraticCurveTo(w,0,w,r);
+  x.lineTo(w,h-r);x.quadraticCurveTo(w,h,w-r,h);
+  x.lineTo(r,h);x.quadraticCurveTo(0,h,0,h-r);
+  x.lineTo(0,r);x.quadraticCurveTo(0,0,r,0);x.closePath();x.fill();
+  x.strokeStyle=accent||'#38bdf8';x.lineWidth=4;x.stroke();
+  x.fillStyle='#f4f8fc';x.textBaseline='middle';
+  x.fillText(text,padX,h/2+2);
+  var tex=new THREE.CanvasTexture(c); tex.anisotropy=4;
+  var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));
+  sp.scale.set(hWorld*w/h,hWorld,1);
+  sp.renderOrder=50;
+  return sp;
+}
+/* steepest sustained pitch over windowed segments; trueH(x,z) gives true metres (or null) */
+function steepestGrade(pts,trueH,mPerUnit){
+  var mx=0,win=6,i;
+  for(i=win;i<pts.length;i++){
+    var a=pts[i-win],b=pts[i];
+    var h=Math.hypot(b.x-a.x,b.z-a.z); if(h<2)continue;
+    var d=trueH?(trueH(a.x,a.z)-trueH(b.x,b.z)):(a.y-b.y)*(mPerUnit||1);
+    var hh=trueH?h:h*(mPerUnit||1);
+    var g=d/hh*100; if(g>mx)mx=g;
+  }
+  return mx;
+}
+
 /* ── LEGACY procedural scene (fallback when real data is unavailable) ── */
 function makeHeight(seed,H){
   var rand=mulberry32(hashStr('mtn'+seed));
@@ -6477,7 +6568,8 @@ function buildProceduralScene(r,base,dem){
   var k=half/WORLD;
 
   buildTerrainProc(scene,heightAt,H,half,mode);
-  var pistes=genPistes(r,rand,heightAt,mPerUnit);
+  var trueH=dem?function(x,z){return dem.sample(x,z);}:null;
+  var pistes=genPistes(r,rand,heightAt,mPerUnit,trueH);
   var pisteGroup=new THREE.Group(); scene.add(pisteGroup);
   pistes.forEach(function(p){
     var mesh=new THREE.Mesh(buildRibbon(p.pts,p.width,heightAt,1.6),
@@ -6485,6 +6577,10 @@ function buildProceduralScene(r,base,dem){
         emissive:p.diff.col,emissiveIntensity:0.06}));
     mesh.userData.piste=p; p.mesh=mesh; p.mat=mesh.material;
     pisteGroup.add(mesh);
+    var mid=p.curve.getPointAt(0.5);
+    var lab=makeLabel(p.name,p.diff.css,110*k);
+    lab.position.set(mid.x,mid.y+60*k,mid.z); lab.visible=false;
+    scene.add(lab); p.label=lab;
   });
   var lifts=[buildLiftProc(scene,heightAt,rand,0.12,1330,330),
              buildLiftProc(scene,heightAt,rand,-0.52,1280,520)];
@@ -6492,11 +6588,21 @@ function buildProceduralScene(r,base,dem){
   pistes.forEach(function(p){for(var i=0;i<p.pts.length;i+=4)samples.push(p.pts[i]);});
   buildTrees(scene,heightAt,rand,samples,half,5);
   buildVillageProc(scene,heightAt,rand);
+  /* approximate base + summit reference labels (illustrative layout) */
+  var bLab=makeLabel('▼ BASE','#f59e0b',130*k);
+  bLab.position.set(0,heightAt(0,1460)+90*k,1460); scene.add(bLab);
+  var sx=0,sz=0,sh=-1e18,gx,gz;
+  for(gx=-half;gx<=half;gx+=half/16)for(gz=-half;gz<=half;gz+=half/16){
+    var gh=heightAt(gx,gz); if(gh>sh){sh=gh;sx=gx;sz=gz;}
+  }
+  var sLab=makeLabel('▲ SUMMIT','#e2e8f0',130*k);
+  sLab.position.set(sx,sh+90*k,sz); scene.add(sLab);
   var skier=makeSkier(scene);
 
   S={name:r.name,mode:mode,renderer:base.renderer,scene:scene,camera:base.camera,
      controls:base.controls,pistes:pistes,pisteGroup:pisteGroup,lifts:lifts,skier:skier,
      sel:null,riding:null,raf:0,last:0,H:H,EX:half,vrange:H,k:k,
+     labelsOn:false,treeOnly:false,
      mapB:{minx:-half*1.15,maxx:half*1.15,minz:-half*1.15,maxz:half*1.15}};
   setNote(note);
 }
@@ -6522,7 +6628,7 @@ function buildTerrainProc(scene,heightAt,H,half,mode){
   g.computeVertexNormals();
   scene.add(new THREE.Mesh(g,new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.93,metalness:0.02})));
 }
-function genPistes(r,rand,heightAt,mPerUnit){
+function genPistes(r,rand,heightAt,mPerUnit,trueH){
   var acres=parseFloat(String(r.acres||'1000').replace(/[^0-9.]/g,''))||1000;
   var total=acres>4000?14:acres>1500?12:acres>400?10:8;
   var mix=[r.green||0,r.blue||0,r.red||0,r.black||0];
@@ -6530,7 +6636,7 @@ function genPistes(r,rand,heightAt,mPerUnit){
   for(i=0;i<4;i++){counts[i]=Math.floor(mix[i]/100*total);assigned+=counts[i];}
   var order=[0,1,2,3].sort(function(a,b){return (mix[b]/100*total-counts[b])-(mix[a]/100*total-counts[a]);});
   var rem=total-assigned;
-  for(i=0;i<rem;i++){var di=order[i%4]; if(mix[di]>0) counts[di]++;}
+  for(i=0;i<rem;i++){var di=order[i%4]; if(mix[di]>0) counts[di++];}
   for(i=0;i<4;i++) if(mix[i]>0&&counts[i]===0) counts[i]=1;
   var list=[];
   for(i=0;i<4;i++) for(k=0;k<counts[i];k++) list.push(i);
@@ -6538,11 +6644,11 @@ function genPistes(r,rand,heightAt,mPerUnit){
   var out=[],seq=[0,0,0,0];
   for(i=0;i<list.length;i++){
     var d=DIFFS[list[i]];
-    out.push(makePiste(r.name,d,seq[list[i]]++,i,list.length,rand,heightAt,mPerUnit));
+    out.push(makePiste(r.name,d,seq[list[i]]++,i,list.length,rand,heightAt,mPerUnit,trueH));
   }
   return out;
 }
-function makePiste(seed,d,seq,num,den,rand,heightAt,mPerUnit){
+function makePiste(seed,d,seq,num,den,rand,heightAt,mPerUnit,trueH){
   var azC=-1.02+2.04*(den<=1?0.5:num/(den-1))+(rand()-0.5)*0.14;
   var r0=170+rand()*130, r1=1150+rand()*190, K=d.pts, cps=[];
   var phase=rand()*Math.PI*2, j, t;
@@ -6559,9 +6665,13 @@ function makePiste(seed,d,seq,num,den,rand,heightAt,mPerUnit){
   var curve=new THREE.CatmullRomCurve3(pts);
   var len=curve.getLength(), drop=pts[0].y-pts[pts.length-1].y, horiz=0;
   for(var q=1;q<pts.length;q++){var a=pts[q-1],b=pts[q];horiz+=Math.hypot(b.x-a.x,b.z-a.z);}
+  /* trueH!=null (real baked terrain): measure vertical in true metres, not exaggerated units */
+  var dropM=trueH?Math.max(0,trueH(pts[0].x,pts[0].z)-trueH(pts[pts.length-1].x,pts[pts.length-1].z))
+                 :Math.max(0,drop)*mPerUnit;
+  var grade=trueH?(horiz>0?dropM/horiz*100:0):(horiz>0?drop/horiz*100:0);
   return {name:d.label+' '+(seq+1),diff:d,curve:curve,pts:pts,width:d.w,
-    lenM:len*mPerUnit,dropM:Math.max(0,drop)*mPerUnit,
-    grade:horiz>0?drop/horiz*100:0};
+    lenM:trueH?len:len*mPerUnit,dropM:dropM,
+    grade:grade,maxGrade:steepestGrade(pts,trueH,mPerUnit)};
 }
 function buildLiftProc(scene,heightAt,rand,az,r0,r1){
   function P(a,rr){return new THREE.Vector3(rr*Math.sin(a),0,rr*Math.cos(a));}
@@ -6604,6 +6714,8 @@ function finishBuild(r,tok){
   });
   resetCam();
   buildChips();
+  buildLegend();
+  var ft=document.getElementById('s3d-fstitle');if(ft)ft.textContent=r.name+' · 3D';
   var def=null,i;
   if(S.mode==='real'){
     var blues=S.pistes.filter(function(p){return p.diff.k==='blue';});
@@ -6641,6 +6753,40 @@ function sizeRenderer(){
   sizeMap();
 }
 function startLoop(){if(S&&!S.raf){S.last=performance.now();S.raf=requestAnimationFrame(tick);}}
+function s3dExpand(){
+  var st=document.getElementById('s3d-stage');if(!st||!S)return;
+  st.classList.add('full');
+  var t=document.getElementById('s3d-fstitle');if(t)t.textContent=S.name+' · 3D';
+  try{document.body.style.overflow='hidden';}catch(e){}
+  sizeRenderer();
+}
+function s3dCollapse(){
+  var st=document.getElementById('s3d-stage');if(!st)return;
+  st.classList.remove('full');
+  try{document.body.style.overflow='';}catch(e){}
+  sizeRenderer();
+}
+function s3dLabels(){
+  if(!S)return;
+  S.labelsOn=!S.labelsOn;
+  var b=document.getElementById('s3d-labelbtn');
+  if(b)b.classList.toggle('on',S.labelsOn);
+  S.pistes.forEach(function(p){
+    if(p.label)p.label.visible=S.labelsOn||p===S.sel;
+  });
+}
+function buildLegend(){
+  var box=document.getElementById('s3d-legend');if(!box)return;
+  box.innerHTML='';
+  DIFFS.forEach(function(d){
+    var s=document.createElement('span');
+    s.innerHTML='<i style="background:'+d.css+'"></i>'+d.label;
+    box.appendChild(s);
+  });
+  var t=document.createElement('span');
+  t.innerHTML='🌲 tree run';
+  box.appendChild(t);
+}
 function tick(now){
   if(!S) return;
   S.raf=requestAnimationFrame(tick);
@@ -6653,6 +6799,11 @@ function tick(now){
       L.chairs[c].position.set(v.x,v.y-8*(L.k||1),v.z);
     }}
   if(S.riding) stepRide(dt);
+  var cmp=document.querySelector('#s3d-compass .ndl');
+  if(cmp&&S.controls&&S.controls.getAzimuthalAngle){
+    var az=S.controls.getAzimuthalAngle();
+    cmp.style.transform='rotate('+(az*180/Math.PI)+'deg)';
+  }
   S.renderer.render(S.scene,S.camera);
 }
 
@@ -6666,8 +6817,10 @@ function selectPiste(p){
   document.getElementById('s3d-vert').textContent=Math.round(p.dropM*3.28084).toLocaleString()+' ft';
   document.getElementById('s3d-len').textContent=(p.lenM/1609.34).toFixed(1)+' mi';
   document.getElementById('s3d-grade').textContent=Math.round(p.grade)+'%';
+  document.getElementById('s3d-steep').textContent=Math.round(p.maxGrade||0)+'%';
   var chips=document.getElementById('s3d-chips').children;
   for(var i=0;i<chips.length;i++)chips[i].classList.toggle('on',chips[i]._piste===p);
+  S.pistes.forEach(function(q){if(q.label)q.label.visible=S.labelsOn||q===p;});
   drawMap();
 }
 function buildChips(){
@@ -6696,7 +6849,8 @@ function applyTreeFilter(){
     p=c._piste;
     var show=!S.treeOnly||!p||p.tree;
     c.style.display=show?'':'none';
-    if(p){p.mesh.visible=show;if(p.treeLine)p.treeLine.visible=show;}
+    if(p){p.mesh.visible=show;if(p.treeLine)p.treeLine.visible=show;
+      if(p.label)p.label.visible=show&&(S.labelsOn||p===S.sel);}
   }
   drawMap();
 }
@@ -6810,11 +6964,16 @@ function mapTap(e){
 function disposeViewer(){
   buildId++;
   s3dPause();
+  try{document.body.style.overflow='';}catch(e){}
+  var st=document.getElementById('s3d-stage');if(st)st.classList.remove('full');
   if(S){
     try{
       S.scene.traverse(function(o){
         if(o.geometry)o.geometry.dispose();
-        if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(function(m){m.dispose();});
+        if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(function(m){
+          if(m.map)m.map.dispose();
+          m.dispose();
+        });
       });
       S.renderer.dispose();
       var el=S.renderer.domElement;
@@ -6836,6 +6995,15 @@ window.s3dPause=s3dPause;
 window.s3dRide=s3dRide;
 window.s3dStopRide=function(){stopRide(false);};
 window.s3dResetCam=function(){resetCam();};
+window.s3dExpand=s3dExpand;
+window.s3dCollapse=s3dCollapse;
+window.s3dLabels=s3dLabels;
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    var st=document.getElementById('s3d-stage');
+    if(st&&st.classList.contains('full'))s3dCollapse();
+  }
+});
 
 })();
 
