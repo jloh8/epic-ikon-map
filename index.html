@@ -294,33 +294,6 @@
   transition: background 0.15s;
 }.bmo:last-child{ border-bottom: none; }.bmo:hover{ background: var(--bg2); }.bmo.active{ background: rgba(56,189,248,0.06); }.bm-thumb{ width: 32px; height: 24px; border-radius: 4px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--border); }.bm-name{ font-size: 12px; font-weight: 500; color: var(--text); }.bm-desc{ font-size: 10px; color: var(--text3); margin-top: 1px; }.bm-ck{ font-size: 12px; color: var(--ice); flex-shrink: 0; margin-left: auto; }
 
-/* ── LEGEND ── */#legend{
-  position: absolute;
-  bottom: 24px;
-  left: 10px;
-  z-index: 1000;
-  background: rgba(14,21,32,0.9);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  backdrop-filter: blur(12px);
-}.leg-title{
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--text4);
-  margin-bottom: 7px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-family: 'DM Mono', monospace;
-}.leg-row{
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 11px;
-  color: var(--text3);
-  margin-bottom: 4px;
-}
-
 /* ── COUNT BADGE ── */#count-badge{
   position: absolute;
   bottom: 24px;
@@ -385,7 +358,6 @@
 
 /* scrollbar global */::-webkit-scrollbar{ width: 4px; }::-webkit-scrollbar-track{ background: transparent; }::-webkit-scrollbar-thumb{ background: var(--border2); border-radius: 4px; }
 
-/* ── ADDED: collapsible legend ── */.leg-title{ cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 14px; user-select: none; }#leg-caret{ font-size: 9px; color: var(--text3); transition: transform .18s; }#legend.collapsed #legend-rows{ display: none; }#legend.collapsed #leg-caret{ transform: rotate(-90deg); }
 
 /* ── ADDED: left-stack sub-panels (hotels / hotspots) ── */.side-subpanel{
   background: rgba(13,21,32,0.94);
@@ -438,58 +410,20 @@
   display: grid; grid-template-columns: 46px 26px 1fr auto; align-items: center;
   gap: 8px; padding: 9px 4px; border-bottom: 1px solid rgba(30,47,68,0.5);
 }.wx10-row:last-child{ border-bottom: none; }.wx10-dn{ display: flex; flex-direction: column; }.wx10-dn .dy{ font-size: 12px; font-weight: 600; color: var(--text); font-family: 'DM Mono', monospace; }.wx10-dn .dt{ font-size: 9px; color: var(--text4); font-family: 'DM Mono', monospace; }.wx10-ic{ font-size: 19px; text-align: center; }.wx10-bar-wrap{ display: flex; flex-direction: column; gap: 4px; min-width: 0; }.wx10-temps{ display: flex; align-items: center; gap: 8px; font-size: 11px; }.wx10-hi{ color: var(--snow); font-weight: 600; }.wx10-lo{ color: var(--text3); }.wx10-track{ height: 4px; background: var(--bg3); border-radius: 4px; overflow: hidden; }.wx10-fill{ height: 100%; background: linear-gradient(90deg,#38bdf8,#f59e0b); }.wx10-snow{ font-size: 10px; color: var(--ice); font-family: 'DM Mono', monospace; text-align: right; min-width: 52px; }.wx10-snow .none{ color: var(--text4); }.wx10-foot{ font-size: 9px; color: var(--text4); font-family: 'DM Mono', monospace; text-align: center; padding: 8px 0 2px; }
-/* ── ADDED: Road Trip planner panel ── */
-#trip-panel{ position: absolute; top: 70px; right: 14px; z-index: 1400; width: 372px; max-width: calc(100vw - 28px); max-height: calc(100vh - var(--topbar-h) - 40px); background: var(--bg1); border: 1px solid var(--border2); border-radius: var(--radius-lg); box-shadow: 0 18px 60px rgba(0,0,0,0.75), 0 0 0 1px rgba(125,211,248,0.05); display: none; flex-direction: column; overflow: hidden; backdrop-filter: blur(14px); }
-#trip-panel.open{ display: flex; }
-#trip-head{ display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; cursor: grab; background: linear-gradient(180deg, var(--bg2), var(--bg1)); border-bottom: 1px solid var(--border); touch-action: none; }
-#trip-head:active{ cursor: grabbing; }
-#trip-title{ font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--snow); }
-#trip-sub{ font-family: 'DM Mono', monospace; font-size: 9px; color: var(--text4); margin-top: 2px; letter-spacing: .04em; text-transform: uppercase; }
-#trip-grip{ font-size: 14px; color: var(--text4); margin-right: 8px; cursor: grab; }
-#trip-close{ background: rgba(255,255,255,0.05); border: 1px solid var(--border2); color: var(--text2); width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 14px; flex-shrink: 0; touch-action: manipulation; }
-#trip-close:hover{ color: var(--snow); border-color: var(--border3); }
-#trip-body{ overflow-y: auto; padding: 12px 14px 16px; scrollbar-width: thin; scrollbar-color: var(--border3) transparent; }
-#trip-body::-webkit-scrollbar{ width: 7px; }#trip-body::-webkit-scrollbar-thumb{ background: var(--border3); border-radius: 6px; }
-.tp-sec-label{ font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--ice); margin: 12px 0 8px; display: flex; align-items: center; justify-content: space-between; }
-.tp-sec-label:first-child{ margin-top: 2px; }
-.tp-presets{ display: flex; gap: 6px; flex-wrap: wrap; }
-.tp-preset{ flex: 1; min-width: 100px; background: var(--bg2); border: 1px solid var(--border2); color: var(--text2); border-radius: 10px; padding: 10px 8px; font-size: 11.5px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; touch-action: manipulation; }
-.tp-preset span{ display: inline-block; margin-left: 4px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text4); background: var(--bg3); border-radius: 99px; padding: 1px 7px; }
-.tp-preset.active{ border-color: var(--ice); color: var(--snow); background: rgba(56,189,248,0.08); }
-.tp-preset.active span{ color: var(--ice); }
-.tp-custom-toggle{ margin-top: 8px; font-size: 11.5px; color: var(--text2); cursor: pointer; font-family: 'DM Mono', monospace; padding: 6px 2px; touch-action: manipulation; }
-.tp-custom-toggle:hover{ color: var(--snow); }
-#tp-custom-list{ max-height: 180px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; margin-top: 4px; background: var(--bg2); }
-.tp-check{ display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text2); padding: 7px 4px; cursor: pointer; border-bottom: 1px solid rgba(30,47,68,0.5); }
-.tp-check:last-child{ border-bottom: none; }
-.tp-check input{ width: 18px; height: 18px; accent-color: var(--ice); flex-shrink: 0; }
-.tp-check .loc{ margin-left: auto; font-size: 9px; color: var(--text4); font-family: 'DM Mono', monospace; }
-.tp-grid2{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-#trip-body label{ font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .05em; display: flex; flex-direction: column; gap: 4px; }
-#trip-body input[type="date"], #trip-body input[type="number"], #trip-body input[type="text"]{ background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; color: var(--text); font-size: 13px; padding: 10px 10px; font-family: 'DM Sans', sans-serif; width: 100%; box-sizing: border-box; }
-#trip-body input:focus{ outline: none; border-color: var(--ice); }
-.tp-full{ margin-top: 8px; }
-.tp-go{ width: 100%; margin-top: 12px; background: var(--epic); border: none; color: #fff; font-size: 14px; font-weight: 700; font-family: 'DM Sans', sans-serif; border-radius: 10px; padding: 13px; cursor: pointer; touch-action: manipulation; }
-.tp-go:disabled{ opacity: 0.55; cursor: wait; }
-#tp-status{ font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 8px; min-height: 14px; }
-.tp-stop{ background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
-.tp-stop-top{ display: flex; align-items: center; gap: 10px; }
-.tp-num{ width: 26px; height: 26px; border-radius: 50%; background: var(--ice); color: #06283a; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
-.tp-name{ font-size: 13px; font-weight: 700; color: var(--snow); font-family: 'Syne', sans-serif; flex: 1; min-width: 0; }
-.tp-drive{ font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 6px; }
-.tp-nights{ display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-.tp-nights button{ width: 40px; height: 40px; border-radius: 8px; background: var(--bg3); border: 1px solid var(--border2); color: var(--text); font-size: 18px; cursor: pointer; touch-action: manipulation; }
-.tp-nights .n{ font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; min-width: 74px; text-align: center; }
-.tp-leg{ font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); margin: 10px 0 6px; }
-#tp-summary{ background: rgba(56,189,248,0.06); border: 1px solid rgba(56,189,248,0.25); border-radius: 10px; padding: 10px 12px; font-size: 11.5px; color: var(--text2); font-family: 'DM Mono', monospace; line-height: 1.7; margin: 10px 0; }
-#tp-summary b{ color: var(--snow); }
-.tp-copy{ width: 100%; background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.5); color: var(--gold); font-size: 13px; font-weight: 700; font-family: 'DM Sans', sans-serif; border-radius: 10px; padding: 13px; cursor: pointer; touch-action: manipulation; }
-.tp-hint{ font-size: 10px; color: var(--text4); line-height: 1.5; margin-top: 8px; }
-.tp-flip{ background: var(--bg3); border: 1px solid var(--border2); color: var(--text2); border-radius: 6px; font-size: 10px; font-family: 'DM Mono', monospace; padding: 5px 10px; cursor: pointer; touch-action: manipulation; }
-.trip-stop-icon{ background: none; border: none; }
-.trip-stop-icon div{ width: 28px; height: 28px; border-radius: 50%; background: #38bdf8; color: #06283a; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.5); font-family: 'DM Sans', sans-serif; }
-.trip-stop-icon.leg2 div{ background: #f59e0b; }
-
+/* ── STAYS TAB ── */
+.st-row{display:flex;gap:8px;margin-bottom:8px}
+.st-row label{flex:1;display:flex;flex-direction:column;gap:4px;font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.05em;min-width:0}
+.st-row input{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--snow);padding:10px 8px;font-size:14px;font-family:inherit;width:100%;box-sizing:border-box;color-scheme:dark}
+.st-go{width:100%;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin:4px 0 10px}
+.st-go:active{transform:scale(.98)}
+.st-link{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--bg2);text-decoration:none}
+.st-link .sn{font-size:13px;font-weight:700;color:var(--snow)}
+.st-link .sd{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px}
+.st-link .go{font-size:13px;color:var(--ice);flex-shrink:0}
+.st-share{width:100%;padding:12px;border-radius:10px;border:1px dashed var(--ice);background:rgba(14,165,233,.08);color:var(--ice);font-size:13px;font-weight:600;cursor:pointer;margin:2px 0 8px}
+.st-note{font-size:10px;color:var(--text4);line-height:1.55;margin-top:4px}
+.st-err{font-size:12px;color:#fca5a5;margin-bottom:8px}
+.st-ok{font-size:12px;color:#6ee7b7;margin-bottom:8px;word-break:break-all}
 /* ── ADDED: West Coast Ikon analysis overlay ── */#westikon-panel{
   position: absolute; top: 0; right: 0; bottom: 0;
   width: 380px; max-width: 92vw; z-index: 1500;
@@ -657,9 +591,6 @@ body.apt-mode #apt-bar{display:flex}
   #info-panel .pbody{max-height:44vh;}
   /* while the resort sheet is up, get the floating tool buttons out of the way */
   body.ip-open #radar-ctrl{display:none;}
-  /* road-trip panel becomes a thumb-reachable bottom sheet on phones */
-  #trip-panel{top:auto !important;bottom:12px;left:12px;right:12px;width:auto;max-height:72vh;}
-  #trip-head{cursor:default;}
   .gm-card{bottom:12px;}
 }
 </style>
@@ -778,6 +709,7 @@ body.apt-mode #apt-bar{display:flex}
       <button class="ptab" onclick="switchTab('sn')">SNOW</button>
       <button class="ptab" onclick="switchTab('cr')">CROWD</button>
       <button class="ptab" onclick="switchTab('tr')">TRAILS</button>
+      <button class="ptab" onclick="switchTab('st')">STAYS</button>
       <button class="ptab" onclick="switchTab('cam')">📷</button>
     </div>
     <div class="pbody">
@@ -856,6 +788,22 @@ body.apt-mode #apt-bar{display:flex}
           <div class="tar">→</div>
         </div>
         <div class="tstats" id="tr-stats"></div>
+      </div>
+      <div class="tc" id="tc-st">
+        <div class="st-row">
+          <label>Check-in<input type="date" id="st-in"></label>
+          <label>Check-out<input type="date" id="st-out"></label>
+        </div>
+        <div class="st-row">
+          <label>Guests<input type="number" id="st-guests" min="1" max="16" value="2"></label>
+          <label>$ min<input type="number" id="st-min" value="150" min="0" step="10"></label>
+          <label>$ max<input type="number" id="st-max" value="200" min="0" step="10"></label>
+        </div>
+        <button class="st-go" onclick="staySearch()">🔍 Find stays</button>
+        <div id="st-msg"></div>
+        <div id="st-results"></div>
+        <button class="st-share" id="st-share" onclick="stayShareLink()" style="display:none">🔗 Copy share link</button>
+        <div class="st-note">Live prices, ratings &amp; availability live on each site — the map can't verify them, so confirm before booking. Booking.com opens pre-filtered to 8.0+ rated places in your price band; on Airbnb, tap <b>Guest favourites</b> after it opens. Searches cover roughly a 1-hour drive around the resort.</div>
       </div>
       <div class="tc" id="tc-cam">
         <div class="ldg" id="cam-ldg">Finding cams…</div>
@@ -1078,7 +1026,6 @@ body.apt-mode #apt-bar{display:flex}
     <button class="rbtn" id="westikon-btn" onclick="openWestIkon()">🌦 Ikon 10-Day WX</button>
 
     <!-- ── ADDED: Road Trip planner ── -->
-    <button class="rbtn" id="trip-btn" onclick="toggleTripPanel()">🗺 Road Trip</button>
 
     <div id="scrub-panel">
       <div class="scrub-hdr">
@@ -1172,82 +1119,7 @@ body.apt-mode #apt-bar{display:flex}
   </div>
 
   <!-- ── ADDED: Road Trip planner panel ── -->
-  <div id="trip-panel">
-    <div id="trip-head" onmousedown="tripDragStart(event)" ontouchstart="tripDragStart(event)">
-      <div style="display:flex;align-items:center;min-width:0">
-        <span id="trip-grip">☰</span>
-        <div style="min-width:0">
-          <div id="trip-title">Ski Road-Trip Planner</div>
-          <div id="trip-sub">Ikon resorts · drive-time routing · drag to move</div>
-        </div>
-      </div>
-      <button id="trip-close" onclick="closeTripPanel()">✕</button>
-    </div>
-    <div id="trip-body">
-      <div class="tp-sec-label">1 · Pick your resorts</div>
-      <div class="tp-presets">
-        <button class="tp-preset" id="tp-pre-mw" onclick="tripPreset('mw')">Midwest Ikon <span>5</span></button>
-        <button class="tp-preset" id="tp-pre-wc" onclick="tripPreset('wc')">West Coast Ikon <span>9</span></button>
-        <button class="tp-preset" id="tp-pre-all" onclick="tripPreset('all')">All Ikon <span id="tp-all-n">–</span></button>
-      </div>
-      <div class="tp-custom-toggle" onclick="tripToggleCustom()">＋ Custom picks <span id="tp-custom-count"></span></div>
-      <div id="tp-custom-list" style="display:none"></div>
-      <div class="tp-sec-label">2 · Trip details</div>
-      <div class="tp-grid2">
-        <label>Start <input type="date" id="tp-start"></label>
-        <label>End <input type="date" id="tp-end"></label>
-        <label>Party <input type="number" id="tp-party" min="1" max="20" value="2"></label>
-        <label>$/night target <input type="number" id="tp-budget" min="0" step="10" value="250"></label>
-      </div>
-      <label class="tp-full">Must-haves <input type="text" id="tp-must" placeholder="e.g. kitchen, hot tub, pet-friendly"></label>
-      <button class="tp-go" id="tp-go" onclick="planTrip()">Plan my route 🗺</button>
-      <div id="tp-status"></div>
-      <div id="tp-results" style="display:none">
-        <div class="tp-sec-label">3 · Your route <button class="tp-flip" id="tp-flip" onclick="tripFlipLegs()" style="display:none">⇄ flip legs</button></div>
-        <div id="tp-itinerary"></div>
-        <div id="tp-summary"></div>
-        <button class="tp-copy" id="tp-copy" onclick="copyTripPrompt()">📋 Copy lodging-hunt prompt</button>
-        <div class="tp-hint">Paste it into any AI chat (like this map's assistant) and it will hunt unique stays near each stop for your dates.</div>
-      </div>
-    </div>
-  </div>
-
   <!-- Legend -->
-  <div id="legend">
-    <div class="leg-title" id="leg-head" onclick="toggleLegend()"><span>Map Key</span><span id="leg-caret">▾</span></div>
-    <div id="legend-rows">
-    <div class="leg-row">
-      <svg width="14" height="14" viewBox="0 0 22 22"><circle cx="11" cy="11" r="10" fill="#1e56d4" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/><text x="11" y="15.5" text-anchor="middle" font-family="Arial Black,Arial" font-weight="900" font-size="11" fill="white">E</text></svg>
-      Epic only
-    </div>
-    <div class="leg-row">
-      <svg width="14" height="14" viewBox="0 0 22 22"><circle cx="11" cy="11" r="10" fill="#1B3F8C" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/><circle cx="11" cy="11" r="4.5" fill="#F5A800"/></svg>
-      Ikon only
-    </div>
-    <div class="leg-row">
-      <svg width="14" height="14" viewBox="0 0 22 22">
-        <defs>
-          <clipPath id="cl"><rect x="0" y="0" width="11" height="22"/></clipPath>
-          <clipPath id="cr2"><rect x="11" y="0" width="11" height="22"/></clipPath>
-        </defs>
-        <circle cx="11" cy="11" r="10" fill="#1e56d4" clip-path="url(#cl)"/>
-        <circle cx="11" cy="11" r="10" fill="#1B3F8C" clip-path="url(#cr2)"/>
-        <circle cx="11" cy="11" r="10" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
-        <circle cx="11" cy="11" r="3.5" fill="#F5A800"/>
-      </svg>
-      Both passes
-    </div>
-    <div class="leg-row"><span style="color:var(--green);font-weight:800;width:14px;text-align:center;font-size:11px">⚡</span>Tesla charging</div>
-    <div class="leg-row"><span style="color:#c084fc;font-weight:800;width:14px;text-align:center;font-size:13px">●</span>Google EV chargers</div>
-    <div class="leg-row"><span style="color:var(--blue-hi);font-weight:800;width:14px;text-align:center;font-size:11px">P</span>Overnight parking</div>
-    <div class="leg-row"><span style="color:#fb923c;font-weight:800;width:14px;text-align:center;font-size:13px">⛽</span>Highway rest stops</div>
-    <div class="leg-row"><span style="color:#c084fc;font-weight:800;width:14px;text-align:center;font-size:11px">⭐</span>Highly rated (≥4.0 / 50+ reviews)</div>
-    <div class="leg-row"><span style="color:#fbbf24;font-weight:800;width:14px;text-align:center;font-size:12px">◆</span>Hotels (rating ≥ 4.0)</div>
-    <div class="leg-row"><span style="color:#2dd4bf;font-weight:800;width:14px;text-align:center;font-size:12px">●</span>24-hour gyms</div>
-    <div class="leg-row"><span style="color:#fb7185;font-weight:800;width:14px;text-align:center;font-size:12px">●</span>Travel centers (Loves/Walmart/Buc-ee's)</div>
-    </div>
-  </div>
-
   <div id="count-badge">Showing <span id="vis-count">—</span> ski resorts</div>
 </div>
 
@@ -1574,7 +1446,7 @@ document.addEventListener('click',e=>{if(!document.getElementById('bm-wrap').con
 function switchTab(t) {
   activeTab=t;
   document.querySelectorAll('.ptab').forEach((b,i)=>{
-    b.classList.toggle('active',['ov','wx','sn','cr','tr','cam'][i]===t);
+    b.classList.toggle('active',['ov','wx','sn','cr','tr','st','cam'][i]===t);
   });
   document.querySelectorAll('.tc').forEach(el=>el.classList.remove('active'));
   document.getElementById('tc-'+t).classList.add('active');
@@ -1762,6 +1634,77 @@ function showPanel(r){
   switchTab('ov');
 }
 function closePanel(){document.getElementById('info-panel').style.display='none';document.body.classList.remove('ip-open');curResort=null;}
+
+// ── STAYS: per-resort lodging hunt (date-aware deep links + shareable link) ──
+function staySlug(n){return String(n).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
+function staySetMin(){
+  var t=new Date().toISOString().slice(0,10);
+  ['st-in','st-out'].forEach(function(id){var el=document.getElementById(id); if(el&&!el.min) el.min=t;});
+}
+function stayMsg(cls,txt){var el=document.getElementById('st-msg'); if(el){el.className=cls; el.textContent=txt;}}
+function staySearch(){
+  var r=curResort; if(!r) return;
+  staySetMin();
+  var ci=document.getElementById('st-in').value, co=document.getElementById('st-out').value;
+  var box=document.getElementById('st-results');
+  document.getElementById('st-share').style.display='none';
+  if(!ci||!co){ box.innerHTML=''; stayMsg('st-err','Pick check-in and check-out dates first.'); return; }
+  if(co<=ci){ box.innerHTML=''; stayMsg('st-err','Check-out must be after check-in.'); return; }
+  stayMsg('','');
+  var ad=Math.max(1,parseInt(document.getElementById('st-guests').value||'2',10));
+  var mn=document.getElementById('st-min').value||'150', mx=document.getElementById('st-max').value||'200';
+  var q=encodeURIComponent(r.name+', '+r.loc);
+  // ~1hr-drive bounding box for Airbnb (~50 mi)
+  var dLa=0.72, dLn=0.72/Math.max(0.3,Math.cos(r.lat*Math.PI/180));
+  var links=[
+    {n:'Airbnb',d:'Homes · your dates · under $'+mx+'/night',u:'https://www.airbnb.com/s/homes?checkin='+ci+'&checkout='+co+'&adults='+ad+'&query='+encodeURIComponent(r.name)+'&ne_lat='+(r.lat+dLa).toFixed(3)+'&ne_lng='+(r.lng+dLn).toFixed(3)+'&sw_lat='+(r.lat-dLa).toFixed(3)+'&sw_lng='+(r.lng-dLn).toFixed(3)+'&price_max='+mx},
+    {n:'VRBO',d:'Vacation rentals · your dates',u:'https://www.vrbo.com/search?destination='+q+'&startDate='+ci+'&endDate='+co+'&adults='+ad},
+    {n:'Booking.com',d:'Rated 8.0+ · $'+mn+'–$'+mx+'/night',u:'https://www.booking.com/searchresults.html?ss='+q+'&checkin='+ci+'&checkout='+co+'&group_adults='+ad+'&no_rooms=1&nflt=price%3DUSD-'+mn+'-'+mx+'%3Breview_score%3D80'},
+    {n:'Expedia',d:'Hotels · your dates',u:'https://www.expedia.com/Hotel-Search?destination='+q+'&startDate='+ci+'&endDate='+co+'&adults='+ad},
+    {n:'Google Hotels',d:'Compare hotel prices near '+r.name,u:'https://www.google.com/travel/hotels?q='+encodeURIComponent('hotels near '+r.name)}
+  ];
+  box.innerHTML=links.map(function(l){
+    return '<a class="st-link" href="'+l.u+'" target="_blank" rel="noopener"><span><span class="sn">'+l.n+'</span><div class="sd">'+l.d+'</div></span><span class="go">Open →</span></a>';
+  }).join('');
+  document.getElementById('st-share').style.display='';
+}
+function stayCopyFb(text,done){var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta);done();}
+function stayShareLink(){
+  var r=curResort; if(!r) return;
+  var p=new URLSearchParams({stay:staySlug(r.name)});
+  var ci=document.getElementById('st-in').value, co=document.getElementById('st-out').value;
+  if(ci)p.set('in',ci); if(co)p.set('out',co);
+  p.set('adults',document.getElementById('st-guests').value||'2');
+  p.set('min',document.getElementById('st-min').value||'150');
+  p.set('max',document.getElementById('st-max').value||'200');
+  var url=location.origin+location.pathname+'?'+p.toString();
+  var done=function(){stayMsg('st-ok','✓ Link copied — anyone opening it lands on '+r.name+' with your dates and the same stay searches.');};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(done).catch(function(){stayCopyFb(url,done);});}
+  else stayCopyFb(url,done);
+}
+// Deep link: ?stay=<slug>&in=&out=&adults=&min=&max= → opens the resort's STAYS tab pre-filled
+window.addEventListener('load',function(){
+  try{
+    var t=new Date().toISOString().slice(0,10);
+    ['st-in','st-out'].forEach(function(id){var el=document.getElementById(id); if(el) el.min=t;});
+    var q=new URLSearchParams(location.search), slug=q.get('stay');
+    if(!slug||typeof resorts==='undefined') return;
+    var r=resorts.find(function(x){return staySlug(x.name)===slug;});
+    if(!r) return;
+    setTimeout(function(){
+      try{
+        if(typeof map!=='undefined'&&map.flyTo) map.flyTo([r.lat,r.lng],10,{duration:1});
+        showPanel(r); switchTab('st');
+        if(q.get('in'))document.getElementById('st-in').value=q.get('in');
+        if(q.get('out'))document.getElementById('st-out').value=q.get('out');
+        if(q.get('adults'))document.getElementById('st-guests').value=q.get('adults');
+        if(q.get('min'))document.getElementById('st-min').value=q.get('min');
+        if(q.get('max'))document.getElementById('st-max').value=q.get('max');
+        staySearch();
+      }catch(e){}
+    },900);
+  }catch(e){}
+});
 
 /* Directions straight from the resort card — mirrors the place-card flow */
 function resortDirTo(){
@@ -3315,324 +3258,6 @@ function stopAnim(){
   const pb=document.getElementById('play-btn');if(pb){pb.textContent='▶ Play';pb.classList.remove('playing');}
 }
 
-// ── ROAD TRIP PLANNER ─────────────────────────────────────────────────────────
-const TRIP_PRESETS = {
-  mw: { label:'Midwest', names:["Boyne Mountain","Boyne Highlands","Snowriver Mountain Resort","Lutsen Mountains","Granite Peak"] },
-  wc: { label:'West Coast', names:["Palisades Tahoe","Sierra-at-Tahoe","Mammoth Mountain","June Mountain","Big Bear Mountain","Snow Valley","Mt Bachelor","Crystal Mountain","Summit at Snoqualmie"] }
-};
-let tripSel = new Set(TRIP_PRESETS.mw.names.concat(TRIP_PRESETS.wc.names)); // default: the full user list
-let tripCustomBuilt = false, tripPlan = null, tripLayer = null, tripLegsFlipped = false, tripEstFallback = false;
-
-function tripResortByName(n){ return (typeof resorts!=='undefined'?resorts:[]).find(r=>r.name===n); }
-function toggleTripPanel(){
-  const p=document.getElementById('trip-panel');
-  const opening=!p.classList.contains('open');
-  p.classList.toggle('open');
-  if(opening){ tripInitForm(); }
-}
-function closeTripPanel(){
-  document.getElementById('trip-panel').classList.remove('open');
-  tripClearLayers();
-}
-function tripClearLayers(){ if(tripLayer&&typeof map!=='undefined'){ map.removeLayer(tripLayer); } tripLayer=null; }
-// drag (same pattern as the 10-day panel)
-let tripDrag=null;
-function tripDragStart(e){
-  if(e.target.id==='trip-close'||window.innerWidth<=760) return;
-  const now=Date.now();
-  if(tripDragStart._last&&now-tripDragStart._last<500) return;
-  tripDragStart._last=now;
-  const panel=document.getElementById('trip-panel');
-  const rect=panel.getBoundingClientRect();
-  const pt=e.touches?e.touches[0]:e;
-  tripDrag={dx:pt.clientX-rect.left,dy:pt.clientY-rect.top,w:rect.width};
-  panel.style.left=rect.left+'px';panel.style.top=rect.top+'px';panel.style.right='auto';
-  document.addEventListener('mousemove',tripDragMove);document.addEventListener('mouseup',tripDragEnd);
-  document.addEventListener('touchmove',tripDragMove,{passive:false});document.addEventListener('touchend',tripDragEnd);
-  e.preventDefault();
-}
-function tripDragMove(e){
-  if(!tripDrag) return;
-  const pt=e.touches?e.touches[0]:e;
-  const panel=document.getElementById('trip-panel');
-  let nx=pt.clientX-tripDrag.dx, ny=pt.clientY-tripDrag.dy;
-  nx=Math.max(4,Math.min(window.innerWidth-tripDrag.w-4,nx));
-  ny=Math.max(60,Math.min(window.innerHeight-60,ny));
-  panel.style.left=nx+'px';panel.style.top=ny+'px';
-  if(e.cancelable) e.preventDefault();
-}
-function tripDragEnd(){
-  tripDrag=null;
-  document.removeEventListener('mousemove',tripDragMove);document.removeEventListener('mouseup',tripDragEnd);
-  document.removeEventListener('touchmove',tripDragMove);document.removeEventListener('touchend',tripDragEnd);
-}
-// form
-function tripInitForm(){
-  const ikons=(typeof resorts!=='undefined'?resorts:[]).filter(r=>r.pass==='ikon');
-  document.getElementById('tp-all-n').textContent=ikons.length;
-  document.getElementById('tp-custom-count').textContent='· '+tripSel.size+' selected';
-  if(!tripCustomBuilt){ tripBuildCustom(ikons); tripCustomBuilt=true; }
-  // leave the default 15-resort selection untouched; just refresh the count
-}
-function tripBuildCustom(ikons){
-  const list=document.getElementById('tp-custom-list');
-  const sorted=ikons.slice().sort((a,b)=>a.name.localeCompare(b.name));
-  list.innerHTML=sorted.map(r=>
-    `<label class="tp-check"><input type="checkbox" data-name="${r.name.replace(/"/g,'&quot;')}" ${tripSel.has(r.name)?'checked':''} onchange="tripSyncCustom()"><span>${r.name}</span><span class="loc">${r.loc||''}</span></label>`
-  ).join('');
-}
-function tripMarkPreset(which){
-  ['mw','wc','all'].forEach(k=>document.getElementById('tp-pre-'+k).classList.toggle('active',k===which));
-}
-function tripPreset(which){
-  tripSel = which==='all'
-    ? new Set((typeof resorts!=='undefined'?resorts:[]).filter(r=>r.pass==='ikon').map(r=>r.name))
-    : new Set(TRIP_PRESETS[which].names);
-  document.querySelectorAll('#tp-custom-list input[type=checkbox]').forEach(cb=>{cb.checked=tripSel.has(cb.dataset.name);});
-  document.getElementById('tp-custom-count').textContent='· '+tripSel.size+' selected';
-  tripMarkPreset(which);
-}
-function tripToggleCustom(){
-  const l=document.getElementById('tp-custom-list');
-  l.style.display=l.style.display==='none'?'block':'none';
-}
-function tripSyncCustom(){
-  tripSel=new Set();
-  document.querySelectorAll('#tp-custom-list input[type=checkbox]:checked').forEach(cb=>tripSel.add(cb.dataset.name));
-  document.getElementById('tp-custom-count').textContent='· '+tripSel.size+' selected';
-  ['mw','wc','all'].forEach(k=>document.getElementById('tp-pre-'+k).classList.remove('active'));
-}
-// routing
-function tripHavKm(a,b){
-  const R=6371,dLa=(b.lat-a.lat)*Math.PI/180,dLo=(b.lng-a.lng)*Math.PI/180;
-  const s=Math.sin(dLa/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLo/2)**2;
-  return 2*R*Math.asin(Math.sqrt(s));
-}
-async function tripDurMatrix(stops){
-  const coords=stops.map(s=>s.lng.toFixed(4)+','+s.lat.toFixed(4)).join(';');
-  try{
-    const r=await fetch('https://router.project-osrm.org/table/v1/driving/'+coords+'?annotations=duration');
-    const j=await r.json();
-    if(j.durations) return j.durations.map(row=>row.map(d=>d==null?-1:d));
-  }catch(e){}
-  tripEstFallback=true;
-  return stops.map((a,i)=>stops.map((b,j)=> i===j?0 : Math.round(tripHavKm(a,b)/88*3600) ));
-}
-function tripOptimize(idxs,dur){
-  const cost=o=>{let c=0;for(let i=1;i<o.length;i++){const d=dur[o[i-1]][o[i]];c+=d<0?1e9:d;}return c;};
-  let best=null,bc=Infinity;
-  for(const s of idxs){
-    const rem=new Set(idxs),order=[s];rem.delete(s);
-    while(rem.size){let bn=null,bcc=Infinity;for(const j of rem){const d=dur[order[order.length-1]][j];const c=d<0?1e9:d;if(c<bcc){bcc=c;bn=j;}}order.push(bn);rem.delete(bn);}
-    let improved=true;
-    while(improved){improved=false;const base=cost(order);
-      for(let i=1;i<order.length-1&&!improved;i++)for(let k=i+1;k<order.length;k++){
-        const cand=order.slice(0,i).concat(order.slice(i,k+1).reverse(),order.slice(k+1));
-        if(cost(cand)<base-1){order.length=0;order.push(...cand);improved=true;break;}
-      }}
-    const c=cost(order);if(c<bc){bc=c;best=order.slice();}
-  }
-  return best;
-}
-function tripSplitLegs(stops){
-  const lngs=stops.map(s=>s.lng);
-  if(Math.max(...lngs)-Math.min(...lngs)>18){
-    const west=stops.filter(s=>s.lng<-100), east=stops.filter(s=>s.lng>=-100);
-    if(west.length&&east.length) return [{label:'Midwest & East',stops:east},{label:'West Coast',stops:west}];
-  }
-  return [{label:'',stops}];
-}
-function tripAcres(r){ const v=parseInt(String(r.acres||'').replace(/[^0-9]/g,''),10); return isNaN(v)?0:v; }
-function tripTotalNights(){
-  const s=document.getElementById('tp-start').value,e=document.getElementById('tp-end').value;
-  if(!s||!e) return null;
-  const n=Math.round((new Date(e+'T12:00')-new Date(s+'T12:00'))/864e5);
-  return n>0?n:null;
-}
-function tripDistributeNights(stops,totalNights){
-  const nights=stops.map(()=>1);
-  if(totalNights==null||totalNights<=stops.length) return nights;
-  let extra=totalNights-stops.length;
-  const order=stops.map((s,i)=>i).sort((a,b)=>tripAcres(stops[b].resort)-tripAcres(stops[a].resort));
-  let cap=2;
-  while(extra>0){
-    let placed=false;
-    for(const i of order){ if(nights[i]<cap&&extra>0){nights[i]++;extra--;placed=true;} }
-    if(!placed){ if(cap>=4) break; cap++; }
-  }
-  return nights;
-}
-function tripFmtDur(sec){
-  if(sec==null||sec<0) return '—';
-  const h=Math.floor(sec/3600),m=Math.round(sec%3600/60);
-  return h? h+'h '+m+'m' : m+'m';
-}
-function tripFmtDate(v){
-  if(!v) return '[fill in]';
-  return new Date(v+'T12:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-}
-async function planTrip(){
-  const selected=[...tripSel].map(tripResortByName).filter(Boolean);
-  const statusEl=document.getElementById('tp-status');
-  if(selected.length<2){ statusEl.textContent='Pick at least 2 resorts to plan a route.'; return; }
-  const goBtn=document.getElementById('tp-go');
-  goBtn.disabled=true; statusEl.textContent='Fetching real drive times (OSRM)…';
-  tripEstFallback=false;
-  const dur=await tripDurMatrix(selected);
-  let legs=tripSplitLegs(selected);
-  if(tripLegsFlipped) legs=legs.slice().reverse();
-  const totalNights=tripTotalNights();
-  // optimize each leg (indices into `selected`)
-  const planLegs=legs.map(leg=>{
-    const idxs=leg.stops.map(s=>selected.indexOf(s));
-    const order=tripOptimize(idxs,dur);
-    const stops=order.map(i=>({resort:selected[i],gidx:i}));
-    const nights=tripDistributeNights(stops,totalNights==null?null:Math.max(1,Math.round(totalNights*stops.length/selected.length)));
-    stops.forEach((s,i)=>{s.nights=nights[i];s.driveSec=i?dur[order[i-1]][order[i]]:-1;});
-    return {label:leg.label,stops,order};
-  });
-  let betweenSec=-1;
-  if(planLegs.length>1){
-    const a=planLegs[0].stops.slice(-1)[0].gidx, b=planLegs[1].stops[0].gidx;
-    betweenSec=dur[a][b];
-  }
-  tripPlan={legs:planLegs,totalNights,selected,betweenSec};
-  document.getElementById('tp-results').style.display='block';
-  document.getElementById('tp-flip').style.display=planLegs.length>1?'inline-block':'none';
-  statusEl.textContent='';
-  goBtn.disabled=false;
-  tripRenderItinerary();
-  tripDrawRoutes();
-}
-function tripFlipLegs(){
-  if(!tripPlan) return;
-  tripLegsFlipped=!tripLegsFlipped;
-  tripPlan.legs=tripPlan.legs.slice().reverse();
-  tripRenderItinerary();
-  tripDrawRoutes();
-}
-function tripAdjustNights(li,si,d){
-  const s=tripPlan.legs[li].stops[si];
-  s.nights=Math.min(7,Math.max(1,s.nights+d));
-  tripRenderItinerary();
-}
-function tripRenderItinerary(){
-  const wrap=document.getElementById('tp-itinerary');
-  let html='',n=0,totalDrive=0,totalNights=0;
-  tripPlan.legs.forEach((leg,li)=>{
-    if(leg.label) html+=`<div class="tp-leg">Leg ${li+1} · ${leg.label}</div>`;
-    leg.stops.forEach((s,si)=>{
-      n++;
-      const d=s.driveSec;
-      if(d>0) totalDrive+=d;
-      totalNights+=s.nights;
-      const prev=si? leg.stops[si-1].resort.name : (li? tripPlan.legs[li-1].stops.slice(-1)[0].resort.name+' (end of leg '+li+')' : null);
-      const driveTxt=prev? ('🚗 '+tripFmtDur(si?d:tripPlan.betweenSec)+' drive from '+prev) : '🏁 Start here';
-      html+=`<div class="tp-stop">
-        <div class="tp-stop-top"><div class="tp-num">${n}</div><div class="tp-name">${s.resort.name}</div></div>
-        <div class="tp-drive">${driveTxt}</div>
-        <div class="tp-nights"><button onclick="tripAdjustNights(${li},${si},-1)">−</button><div class="n">${s.nights} night${s.nights>1?'s':''}</div><button onclick="tripAdjustNights(${li},${si},1)">+</button></div>
-      </div>`;
-    });
-  });
-  wrap.innerHTML=html;
-  const tn=tripPlan.totalNights;
-  let warn='';
-  if(tn!=null&&tn<n) warn=`<br>⚠ <b>${tn} nights for ${n} stops</b> — you'll move every day. Trim stops or extend the trip.`;
-  const between=tripPlan.betweenSec>0?tripPlan.betweenSec:-1;
-  const grandDrive=totalDrive+(between>0?between:0);
-  document.getElementById('tp-summary').innerHTML=
-    `<b>${n} stops</b> · <b>${totalNights} lodging nights</b> · <b>${tripFmtDur(grandDrive)}</b> total driving${tripEstFallback?' (estimated)':''}`+
-    (between>0?`<br>Between legs: <b>${tripFmtDur(between)}</b> — a full travel day; consider a rest stop or flight.`:'')+
-    warn;
-}
-async function tripDrawRoutes(){
-  tripClearLayers();
-  if(typeof map==='undefined'||!tripPlan) return;
-  tripLayer=L.layerGroup().addTo(map);
-  const colors=['#38bdf8','#f59e0b'];
-  const bounds=[];
-  let n=0;
-  for(let li=0;li<tripPlan.legs.length;li++){
-    const leg=tripPlan.legs[li], color=colors[li%2];
-    for(const s of leg.stops){
-      n++;
-      const icon=L.divIcon({className:'trip-stop-icon leg'+(li+1),html:`<div>${n}</div>`,iconSize:[30,30],iconAnchor:[15,15]});
-      const r=s.resort;
-      L.marker([r.lat,r.lng],{icon}).addTo(tripLayer).on('click',()=>showPanel(r));
-      bounds.push([r.lat,r.lng]);
-    }
-    const pairs=[];
-    for(let i=1;i<leg.stops.length;i++){
-      const a=leg.stops[i-1].resort,b=leg.stops[i].resort;
-      pairs.push(fetch(`https://router.project-osrm.org/route/v1/driving/${a.lng.toFixed(4)},${a.lat.toFixed(4)};${b.lng.toFixed(4)},${b.lat.toFixed(4)}?overview=full&geometries=geojson`)
-        .then(r=>r.json()).then(j=>j.routes&&j.routes[0]&&j.routes[0].geometry).catch(()=>null));
-    }
-    const geoms=await Promise.all(pairs);
-    geoms.forEach(g=>{ if(g) L.geoJSON(g,{style:{color,weight:4,opacity:0.85}}).addTo(tripLayer); });
-  }
-  if(bounds.length) map.fitBounds(bounds,{padding:[40,40]});
-}
-function copyTripPrompt(){
-  const p=tripPlan;
-  const sVal=document.getElementById('tp-start').value, eVal=document.getElementById('tp-end').value;
-  const party=document.getElementById('tp-party').value||'[fill in]';
-  const budget=document.getElementById('tp-budget').value||'[fill in]';
-  const must=document.getElementById('tp-must').value||'[none specified]';
-  const tn=tripPlan.totalNights;
-  const totalBudget=(tn!=null&&budget!=='[fill in]')?('$'+(tn*Number(budget)).toLocaleString()):'[fill in]';
-  let routeTxt='',n=0;
-  p.legs.forEach((leg,li)=>{
-    if(leg.label) routeTxt+=`\nLEG ${li+1} — ${leg.label.toUpperCase()}:\n`;
-    leg.stops.forEach((s,si)=>{
-      n++;
-      const prev=si? ` (drive from previous stop: ${tripFmtDur(s.driveSec)})` : (li? ` (drive from end of leg ${li}: ${tripFmtDur(p.betweenSec)})` : ' (trip start)');
-      routeTxt+=`${n}. ${s.resort.name} — ${s.resort.loc} — ${s.nights} night${s.nights>1?'s':''}${prev}\n`;
-    });
-  });
-  const prompt=
-`You are an expert ski road-trip planner and lodging deal hunter. I am planning a 2-WEEK ROAD TRIP to ski Ikon Pass resorts, driving between resorts. Find me the best Airbnb and hotel DEALS within a 1-HOUR DRIVE of each resort.
-
-MY TRIP DETAILS:
-- Dates: ${tripFmtDate(sVal)} to ${tripFmtDate(eVal)} (${tn!=null?tn+' nights':'[fill in] nights'})
-- Party size: ${party}
-- Nightly budget target: under $${budget}/night all-in (rate + fees + taxes)
-- Total lodging budget: ${totalBudget}
-- Must-haves: ${must}
-
-MY DRIVING ROUTE (in order — drive times are real road estimates):
-${routeTxt}
-VIBE I'M GOING FOR:
-I like NEW, UNIQUE, BOUTIQUE, or ARCHITECTURALLY INTERESTING properties — the kind of place with a view, surrounded by nature, where I can hang out all day. Bonus for places with activities on-site or nearby (hiking, hot springs, lake, cute town).
-
-RULES:
-- NO made-up prices. Only real availability and verified prices. If something is unavailable or unverifiable, say so.
-- One card per stop with: nightly rate, cleaning/service fees, taxes if known, total for the stay, cancellation terms, best-value pick, and any standout deal.
-- Give me 2–3 VERIFIED options per stop within an hour's drive of the resort.
-- Be honest about drive times and recommend 1–2 nights per stop given my dates above.
-- Finish with a route summary and total cost estimate.
-
-OUTPUT FORMAT:
-- Route overview first: recommended order and why.
-- Then one card per stop.
-- Final summary: total driving, total lodging cost vs my ${totalBudget} budget.`;
-  const done=()=>{document.getElementById('tp-status').textContent='✓ Prompt copied — paste it into any AI chat to start the lodging hunt.';};
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(prompt).then(done).catch(()=>tripCopyFallback(prompt,done));
-  }else tripCopyFallback(prompt,done);
-}
-function tripCopyFallback(text,done){
-  const ta=document.createElement('textarea');
-  ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
-  document.body.appendChild(ta);ta.select();
-  try{ document.execCommand('copy'); done(); }
-  catch(e){ document.getElementById('tp-status').textContent='Copy failed — long-press the panel text instead.'; }
-  document.body.removeChild(ta);
-}
-
-// ── INIT ──────────────────────────────────────────────────────────────────────
-// ── GOOGLE MAPS KEY ──────────────────────────────────────────────────────────
-let gmapsKey = localStorage.getItem('gmapsKey') || '';
 function saveGMapsKey() {
   const inp = document.getElementById('gmaps-key');
   if (!inp) return;
@@ -3938,8 +3563,6 @@ function svToolClick(e) {
 // ADDED FEATURES
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── Collapsible legend ──────────────────────────────────────────────────────
-function toggleLegend(){ document.getElementById('legend').classList.toggle('collapsed'); }
 
 // ── HOTELS (high rating, Google Places) ─────────────────────────────────────
 let liveHotelMks = [], liveHotelIds = new Set();
