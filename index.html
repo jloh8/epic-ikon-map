@@ -6112,7 +6112,7 @@ function parseOSM(j,lat0,lng0){
       var diff=null,d;
       for(d=0;d<DIFFS.length;d++)if(DIFFS[d].k===dk)diff=DIFFS[d];
       pistes.push({name:tags.name||null,diff:diff,raw:pts,lenM:len,
-        glade:tags['piste:type']==='glade',treeFrac:0});
+        glade:tags['piste:type']==='glade'});
     }else if(tags.aerialway){
       lifts.push({name:tags.name||null,kind:tags.aerialway,raw:pts,lenM:len});
     }
@@ -6126,76 +6126,6 @@ function parseOSM(j,lat0,lng0){
   if(pistes.length>150)pistes.length=150;
   if(lifts.length>40)lifts.length=40;
   return {pistes:pistes,lifts:lifts};
-}
-
-/* ── tree-run detection: forest polygons are fetched separately (best-effort) so a
-   slow forest query can never block or break the piste/lift fetch above ── */
-function inRing(x,z,ring){
-  if(x<ring.bx0||x>ring.bx1||z<ring.bz0||z>ring.bz1)return false;
-  var pts=ring.pts,inside=false,i,j;
-  for(i=0,j=pts.length-1;i<pts.length;j=i++){
-    var xi=pts[i].x,zi=pts[i].z,xj=pts[j].x,zj=pts[j].z;
-    if(((zi>z)!==(zj>z))&&(x<(xj-xi)*(z-zi)/(zj-zi)+xi))inside=!inside;
-  }
-  return inside;
-}
-function parseForests(j,lat0,lng0){
-  if(!j||!j.elements)return [];
-  var P=proj0(lat0,lng0),rings=[],i,e;
-  for(i=0;i<j.elements.length;i++){
-    e=j.elements[i];
-    if(e.type!=='way'||!e.geometry||e.geometry.length<3)continue;
-    var tags=e.tags||{};
-    if(tags.natural!=='wood'&&tags.landuse!=='forest')continue;
-    var ring=[],g,k,bx0=1e18,bx1=-1e18,bz0=1e18,bz1=-1e18;
-    for(k=0;k<e.geometry.length;k+=2){
-      g=e.geometry[k];
-      var m=P.f(g.lat,g.lon);
-      ring.push({x:m[0],z:m[1]});
-      if(m[0]<bx0)bx0=m[0];if(m[0]>bx1)bx1=m[0];
-      if(m[1]<bz0)bz0=m[1];if(m[1]>bz1)bz1=m[1];
-    }
-    if(ring.length>2)rings.push({pts:ring,bx0:bx0,bx1:bx1,bz0:bz0,bz1:bz1});
-    if(rings.length>400)break;
-  }
-  return rings;
-}
-function fetchForests(lat,lng){
-  if(typeof lat!=='number'||typeof lng!=='number')return Promise.resolve([]);
-  var s=lat-0.045,w=lng-0.06,n=lat+0.045,e=lng+0.06;
-  var q='[out:json][timeout:25];(way["natural"="wood"]('+
-    s+','+w+','+n+','+e+');way["landuse"="forest"]('+
-    s+','+w+','+n+','+e+'););out tags geom;';
-  function one(url){
-    var ctl=null;
-    try{ctl=new AbortController();}catch(ab){}
-    var to=setTimeout(function(){if(ctl)ctl.abort();},30000);
-    var opts={method:'POST',body:'data='+encodeURIComponent(q),
-      headers:{'Content-Type':'application/x-www-form-urlencoded'}};
-    if(ctl)opts.signal=ctl.signal;
-    return fetch(url,opts).then(function(res){
-      clearTimeout(to);
-      if(!res.ok)throw new Error('overpass '+res.status);
-      return res.json();
-    }).then(function(j){return parseForests(j,lat,lng);},
-      function(){return [];});
-  }
-  return one('https://overpass-api.de/api/interpreter').then(function(r){
-    return r.length?r:one('https://overpass.kumi.systems/api/interpreter');
-  });
-}
-function applyTreeCover(pistes,rings){
-  if(!rings||!rings.length)return;
-  pistes.forEach(function(op){
-    var inside=0,tested=0,k,f,p;
-    for(k=0;k<op.raw.length;k+=3){
-      p=op.raw[k];tested++;
-      for(f=0;f<rings.length;f++){
-        if(inRing(p.x,p.z,rings[f])){inside++;break;}
-      }
-    }
-    op.treeFrac=tested?inside/tested:0;
-  });
 }
 
 function slugify(n){return String(n).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
@@ -6236,11 +6166,10 @@ function buildViewer(r,tok){
     var base;
     try{base=makeBase(dem?dem.half:WORLD);}catch(e){showErr();return;}
     setLoad('Loading real pistes · OpenStreetMap…');
-    Promise.all([fetchOSM(r.lat,r.lng),fetchForests(r.lat,r.lng)]).then(function(rr){
-      var osm=rr[0];
+    fetchOSM(r.lat,r.lng).then(function(osm){
       if(!alive(r,tok)){disposeBase(base);return;}
       try{
-        if(dem&&osm){applyTreeCover(osm.pistes,rr[1]);buildRealScene(r,base,dem,osm);}
+        if(dem&&osm)buildRealScene(r,base,dem,osm);
         else buildProceduralScene(r,base,dem);
       }catch(e){disposeBase(base);showErr();return;}
       finishBuild(r,tok);
@@ -6313,10 +6242,9 @@ function buildRealScene(r,base,dem,osm){
     }
     var trueDrop=Math.max(0,tH(raw[0].x,raw[0].z)-tH(raw[raw.length-1].x,raw[raw.length-1].z));
     var nm=op.name||(op.diff.label+' '+(idx+1));
-    var tree=!!(op.glade||op.treeFrac>=0.4||/glade/i.test(nm));
-    var treeSrc=op.glade?'glade tag':(op.treeFrac>=0.4?'forest cover':(/glade/i.test(nm)?'name':''));
+    var tree=!!(op.glade||/glade/i.test(nm));
+    var treeSrc=op.glade?'glade tag':(/glade/i.test(nm)?'name':'');
     var p={name:nm,diff:op.diff,curve:curve,pts:pts,tree:tree,treeSrc:treeSrc,
-      treeFrac:op.treeFrac||0,
       width:op.diff.w,lenM:len,dropM:trueDrop,grade:horiz>0?dropSum/horiz*100:0,
       maxGrade:steepestGrade(raw,tH,1),real:true};
     var mesh=new THREE.Mesh(buildRibbon(pts,p.width,hAt,2),
@@ -6368,7 +6296,7 @@ function buildRealScene(r,base,dem,osm){
      sel:null,riding:null,raf:0,last:0,H:vrange,EX:half,vrange:vrange,k:k,
      labelsOn:true,treeOnly:false,
      mapB:pisteBounds(pistes)};
-  setNote('Real terrain (elevation data) · real pistes & lifts © OpenStreetMap contributors · 🌲 = tree run (OSM glade tag or forest cover) — drag to orbit · pinch to zoom.');
+  setNote('Real terrain (elevation data) · real pistes & lifts © OpenStreetMap contributors · 🌲 = mapped glade (OpenStreetMap) — drag to orbit · pinch to zoom.');
 }
 function buildTerrainReal(scene,hAt,half,vrange){
   var SEG=170,SIZE=half*2;
