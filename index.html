@@ -868,6 +868,7 @@ body.apt-mode #apt-bar{display:flex}
             <div id="s3d-maplabel">trail map · tap a line</div>
           </div>
           <div id="s3d-legend"></div>
+          <input id="s3d-search" type="search" placeholder="Search runs…" style="width:100%;margin:6px 0;padding:8px 12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;" />
           <div id="s3d-chips"></div>
           <div class="s3d-note">Stylized 3D preview — terrain &amp; piste layout are illustrative, scaled to this resort's real vertical drop and difficulty mix. Drag to orbit · pinch to zoom.</div>
           </div>
@@ -6719,6 +6720,17 @@ function finishBuild(r,tok){
   });
   resetCam();
   buildChips();
+  /* Bonvo-style run search: filter chips by name */
+  var sq=document.getElementById('s3d-search');
+  if(sq){sq.value='';sq.oninput=function(){
+    var q=sq.value.toLowerCase(),chips=document.getElementById('s3d-chips').children;
+    for(var i=0;i<chips.length;i++){
+      var c=chips[i];
+      if(c.textContent.indexOf('🌲 trees')===0)continue;
+      var p=c._piste;
+      c.style.display=(!q||(p&&p.name.toLowerCase().indexOf(q)>=0))?'':'none';
+    }
+  };}
   buildLegend();
   var lb=document.getElementById('s3d-labelbtn');if(lb)lb.classList.toggle('on',!!(S&&S.labelsOn));
   var ft=document.getElementById('s3d-fstitle');if(ft)ft.textContent=r.name+' · 3D';
