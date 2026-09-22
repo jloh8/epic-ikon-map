@@ -5957,18 +5957,6 @@ function proj0(lat0,lng0){
     inv:function(x,z){return [lat0-z/111320,lng0+x/kx];}
   };
 }
-function ll2tile(lat,lng,z){
-  var n=Math.pow(2,z),lr=lat*Math.PI/180;
-  return {x:Math.floor((lng+180)/360*n),
-          y:Math.floor((1-Math.log(Math.tan(lr)+1/Math.cos(lr))/Math.PI)/2*n)};
-}
-function tile2ll(x,y,z){
-  var n=Math.pow(2,z);
-  var lng=x/n*360-180;
-  var r=Math.atan(Math.sinh(Math.PI*(1-2*y/n)));
-  return {lat:r*180/Math.PI,lng:lng};
-}
-
 /* ── public entry points (wired from switchTab / buttons) ── */
 function s3dShow(r){
   var loadEl=document.getElementById('s3d-load'),
@@ -6001,24 +5989,80 @@ function alive(r,tok){
   return tok===buildId&&typeof curResort!=='undefined'&&curResort===r&&activeTab==='3d';
 }
 
-/* ── real data: OpenStreetMap pistes + lifts ── */
+/* ── real data: OpenStreetMap pistes + lifts (Overpass, then main API fallback) ── */
 function fetchOSM(lat,lng){
+  if(typeof lat!=='number'||typeof lng!=='number')return Promise.resolve(null);
+  return overpassQuery('https://overpass-api.de/api/interpreter',lat,lng).then(function(r){
+    return r||overpassQuery('https://overpass.kumi.systems/api/interpreter',lat,lng);
+  }).then(function(r){
+    return r||osmMainFallback(lat,lng);
+  });
+}
+function overpassQuery(url,lat,lng){
   var s=lat-0.045,w=lng-0.06,n=lat+0.045,e=lng+0.06;
   var q='[out:json][timeout:30];(way["piste:type"~"^(downhill|ski)$"]('+
     s+','+w+','+n+','+e+');way["aerialway"~"^(chair_lift|gondola|cable_car|t-bar|j-bar|platter|drag_lift|magic_carpet)$"]('+
     s+','+w+','+n+','+e+'););out tags geom;';
-  var ctl;
-  try{ctl=new AbortController();}catch(ab){ctl=null;}
+  var ctl=null;
+  try{ctl=new AbortController();}catch(ab){}
   var to=setTimeout(function(){if(ctl)ctl.abort();},35000);
   var opts={method:'POST',body:'data='+encodeURIComponent(q),
     headers:{'Content-Type':'application/x-www-form-urlencoded'}};
   if(ctl)opts.signal=ctl.signal;
-  return fetch('https://overpass-api.de/api/interpreter',opts).then(function(res){
+  return fetch(url,opts).then(function(res){
     clearTimeout(to);
     if(!res.ok)throw new Error('overpass '+res.status);
     return res.json();
   }).then(function(j){return parseOSM(j,lat,lng);},
     function(){return null;});
+}
+/* fallback for networks that block Overpass: main OSM API (XML, smaller bbox) */
+function osmMainFallback(lat,lng){
+  var s=lat-0.02,w=lng-0.025,n=lat+0.02,e=lng+0.025;
+  var ctl=null;
+  try{ctl=new AbortController();}catch(ab){}
+  var to=setTimeout(function(){if(ctl)ctl.abort();},55000);
+  var opts={};
+  if(ctl)opts.signal=ctl.signal;
+  return fetch('https://api.openstreetmap.org/api/0.6/map?bbox='+w+','+s+','+e+','+n,opts)
+    .then(function(res){
+      clearTimeout(to);
+      if(!res.ok)throw new Error('osm '+res.status);
+      return res.text();
+    }).then(function(xml){return parseOSMXML(xml,lat,lng);},
+      function(){return null;});
+}
+function parseOSMXML(xml,lat0,lng0){
+  var doc;
+  try{doc=new DOMParser().parseFromString(xml,'text/xml');}
+  catch(e){return null;}
+  if(!doc||!doc.getElementsByTagName)return null;
+  var nodes={},i,k;
+  var nels=doc.getElementsByTagName('node');
+  for(i=0;i<nels.length;i++){
+    var nn=nels[i];
+    nodes[nn.getAttribute('id')]={
+      lat:parseFloat(nn.getAttribute('lat')),
+      lon:parseFloat(nn.getAttribute('lon'))};
+  }
+  var els=[];
+  var ways=doc.getElementsByTagName('way');
+  for(i=0;i<ways.length;i++){
+    var w=ways[i],tags={},geom=[],ok=true;
+    var tgs=w.getElementsByTagName('tag');
+    for(k=0;k<tgs.length;k++)tags[tgs[k].getAttribute('k')]=tgs[k].getAttribute('v');
+    var pt=tags['piste:type'];
+    if(!((pt==='downhill'||pt==='ski')||tags.aerialway))continue;
+    var nds=w.getElementsByTagName('nd');
+    for(k=0;k<nds.length;k++){
+      var nd=nodes[nds[k].getAttribute('ref')];
+      if(!nd){ok=false;break;}
+      geom.push(nd);
+    }
+    if(!ok||geom.length<2)continue;
+    els.push({type:'way',tags:tags,geometry:geom});
+  }
+  return parseOSM({elements:els},lat0,lng0);
 }
 function parseOSM(j,lat0,lng0){
   if(!j||!j.elements)return null;
@@ -6055,75 +6099,52 @@ function parseOSM(j,lat0,lng0){
   return {pistes:pistes,lifts:lifts};
 }
 
-/* ── real data: elevation tiles (Terrarium) ── */
-function loadTile(z,x,y){
-  return new Promise(function(res,rej){
-    var to=setTimeout(function(){rej(new Error('tile timeout'));},20000);
-    var im=new Image();
-    im.crossOrigin='anonymous';
-    im.onload=function(){clearTimeout(to);res(im);};
-    im.onerror=function(){clearTimeout(to);rej(new Error('tile error'));};
-    im.src='https://s3.amazonaws.com/elevation-tiles-prod/terrarium/'+z+'/'+x+'/'+y+'.png';
-  });
-}
-function fetchTerrain(lat,lng){
-  var z=13,c=ll2tile(lat,lng,z),x0=c.x-1,y0=c.y-1,jobs=[],dx,dy;
-  for(dy=0;dy<3;dy++)for(dx=0;dx<3;dx++)jobs.push(loadTile(z,x0+dx,y0+dy));
-  return Promise.all(jobs).then(function(imgs){
-    var cv=document.createElement('canvas');cv.width=cv.height=768;
-    var cx=cv.getContext('2d',{willReadFrequently:true});
-    if(!cx)throw new Error('no 2d ctx');
-    for(var i=0;i<9;i++)cx.drawImage(imgs[i],(i%3)*256,((i/3)|0)*256);
-    var d=cx.getImageData(0,0,768,768).data;
-    var el=new Float32Array(768*768),mn=1e9,mx=-1e9,i2,e;
-    for(i2=0;i2<768*768;i2++){
-      e=d[i2*4]*256+d[i2*4+1]+d[i2*4+2]/256-32768;
-      el[i2]=e;if(e<mn)mn=e;if(e>mx)mx=e;
+function slugify(n){return String(n).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
+/* ── real data: baked elevation grid (data/terrain/<slug>.json) ──
+   Generated from AWS Terrain Tiles (Terrarium). Same-origin fetch, no CORS issues. */
+function fetchTerrainBaked(r){
+  return fetch('data/terrain/'+slugify(r.name)+'.json').then(function(res){
+    if(!res.ok)throw new Error('no terrain');
+    return res.json();
+  }).then(function(j){
+    if(!j||!j.data||!j.n)throw new Error('bad terrain');
+    var n=j.n,raw=atob(j.data),el=new Float32Array(n*n),i,v,mn=1e18,mx=-1e18;
+    for(i=0;i<n*n;i++){
+      v=raw.charCodeAt(i*2)|(raw.charCodeAt(i*2+1)<<8);
+      if(v>32767)v-=65536;
+      v=j.min+v*j.step; el[i]=v;
+      if(v<mn)mn=v; if(v>mx)mx=v;
     }
-    if(!(mx-mn>20))throw new Error('flat terrain');
-    var nw=tile2ll(x0,y0,z),se=tile2ll(x0+3,y0+3,z);
-    var P=proj0(lat,lng);
-    var ex=(se.lng-nw.lng)*111320*Math.cos(lat*Math.PI/180)/2;
-    var ez=(nw.lat-se.lat)*111320/2;
+    var half=j.half;
     function sample(x,z){
-      var ll=P.inv(x,z);
-      var gx=(ll[1]-nw.lng)/(se.lng-nw.lng)*767;
-      var gy=(nw.lat-ll[0])/(nw.lat-se.lat)*767;
-      gx=gx<0?0:gx>767?767:gx; gy=gy<0?0:gy>767?767:gy;
+      var gx=(x+half)/(2*half)*(n-1),gy=(z+half)/(2*half)*(n-1);
+      gx=gx<0?0:gx>n-1?n-1:gx; gy=gy<0?0:gy>n-1?n-1:gy;
       var xi=Math.floor(gx),yi=Math.floor(gy),fx=gx-xi,fy=gy-yi;
-      var xj=xi<767?xi+1:767,yj=yi<767?yi+1:767;
-      var a=el[yi*768+xi],b=el[yi*768+xj],cc=el[yj*768+xi],dd=el[yj*768+xj];
-      return a+(b-a)*fx+(cc-a)*fy+(a-b-cc+dd)*fx*fy;
+      var xj=xi<n-1?xi+1:n-1,yj=yi<n-1?yi+1:n-1;
+      var a=el[yi*n+xi],b=el[yi*n+xj],c=el[yj*n+xi],d=el[yj*n+xj];
+      return a+(b-a)*fx+(c-a)*fy+(a-b-c+d)*fx*fy;
     }
-    return {sample:sample,mn:mn,mx:mx,half:Math.max(ex,ez)};
+    return {sample:sample,mn:mn,mx:mx,half:half};
   },function(){return null;});
-}
-function loadRealData(r){
-  if(typeof r.lat!=='number'||typeof r.lng!=='number')return Promise.resolve(null);
-  return Promise.all([fetchOSM(r.lat,r.lng),fetchTerrain(r.lat,r.lng)])
-    .then(function(out){
-      if(!out[0]||!out[1])return null;
-      return {osm:out[0],dem:out[1]};
-    },function(){return null;});
 }
 
 /* ── scene construction ── */
 function buildViewer(r,tok){
   if(!alive(r,tok))return;
-  var base;
-  try{
-    var estHalf=(typeof r.lat==='number')
-      ? 40075016*Math.cos(r.lat*Math.PI/180)/8192*1.5 : WORLD;
-    base=makeBase(estHalf);
-  }catch(e){showErr();return;}
-  setLoad('Loading real terrain & pistes…');
-  loadRealData(r).then(function(rd){
-    if(!alive(r,tok)){disposeBase(base);return;}
-    try{
-      if(rd)buildRealScene(r,base,rd);
-      else buildProceduralScene(r,base);
-    }catch(e){disposeBase(base);showErr();return;}
-    finishBuild(r,tok);
+  setLoad('Loading real terrain…');
+  fetchTerrainBaked(r).then(function(dem){
+    if(!alive(r,tok))return;
+    var base;
+    try{base=makeBase(dem?dem.half:WORLD);}catch(e){showErr();return;}
+    setLoad('Loading real pistes · OpenStreetMap…');
+    fetchOSM(r.lat,r.lng).then(function(osm){
+      if(!alive(r,tok)){disposeBase(base);return;}
+      try{
+        if(dem&&osm)buildRealScene(r,base,dem,osm);
+        else buildProceduralScene(r,base,dem);
+      }catch(e){disposeBase(base);showErr();return;}
+      finishBuild(r,tok);
+    });
   });
 }
 function showErr(){
@@ -6167,13 +6188,9 @@ function resample(raw,max){
   return out;
 }
 
-/* ── REAL scene ── */
-function buildRealScene(r,base,rd){
-  var dem=rd.dem,osm=rd.osm,scene=base.scene,half=dem.half;
-  base.scene.fog.near=half*1.7; base.scene.fog.far=half*3.6;
-  base.camera.far=half*10; base.camera.updateProjectionMatrix();
-  base.controls.maxDistance=half*2.8;
-  base.controls.minDistance=Math.max(120,half*0.12);
+/* ── REAL scene: baked terrain + OSM pistes/lifts ── */
+function buildRealScene(r,base,dem,osm){
+  var scene=base.scene,half=dem.half;
   function hAt(x,z){return (dem.sample(x,z)-dem.mn)*EXAG;}
   var vrange=(dem.mx-dem.mn)*EXAG;
   var k=half/WORLD; // world-scale factor vs legacy scene
@@ -6188,7 +6205,7 @@ function buildRealScene(r,base,rd){
     var len=curve.getLength(),drop=pts[0].y-pts[pts.length-1].y,horiz=0;
     for(i=1;i<pts.length;i++)horiz+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].z-pts[i-1].z);
     var p={name:op.name||(op.diff.label+' '+(idx+1)),diff:op.diff,curve:curve,pts:pts,
-      width:op.diff.w,lenM:len*0.999,dropM:Math.max(0,drop),grade:horiz>0?drop/horiz*100:0,real:true};
+      width:op.diff.w,lenM:len,dropM:Math.max(0,drop),grade:horiz>0?drop/horiz*100:0,real:true};
     var mesh=new THREE.Mesh(buildRibbon(pts,p.width,hAt,2),
       new THREE.MeshStandardMaterial({color:op.diff.col,roughness:0.85,metalness:0,
         emissive:op.diff.col,emissiveIntensity:0.06}));
@@ -6355,16 +6372,29 @@ function makeHeight(seed,H){
     return h>0?h:0;
   };
 }
-function buildProceduralScene(r,base){
-  var vertFt=parseVert(r.vert);
-  var H=Math.min(46,Math.max(9,vertFt/95));
-  var rand=mulberry32(hashStr('piste'+r.name));
-  var heightAt=makeHeight(r.name,H);
-  var scaleFt=vertFt/H;
+/* dem!=null → illustrative pistes draped on the resort's REAL baked terrain ('terr');
+   dem==null → legacy fully-stylized mountain ('proc'). */
+function buildProceduralScene(r,base,dem){
   var scene=base.scene;
+  var rand=mulberry32(hashStr('piste'+r.name));
+  var half=dem?dem.half:WORLD, heightAt, H, mPerUnit, mode, note;
+  if(dem){
+    mode='terr';
+    heightAt=function(x,z){return (dem.sample(x,z)-dem.mn)*EXAG;};
+    H=(dem.mx-dem.mn)*EXAG; mPerUnit=1;
+    note='Real terrain (elevation data) · illustrative pistes (no mapped piste data for this resort) — drag to orbit · pinch to zoom.';
+  }else{
+    mode='proc';
+    var vertFt=parseVert(r.vert);
+    H=Math.min(46,Math.max(9,vertFt/95));
+    heightAt=makeHeight(r.name,H);
+    mPerUnit=vertFt/H*0.3048;
+    note='Stylized 3D preview — terrain & piste layout are illustrative, scaled to this resort\u2019s real vertical drop and difficulty mix. Drag to orbit · pinch to zoom.';
+  }
+  var k=half/WORLD;
 
-  buildTerrainProc(scene,heightAt,H);
-  var pistes=genPistes(r,rand,heightAt,scaleFt);
+  buildTerrainProc(scene,heightAt,H,half,mode);
+  var pistes=genPistes(r,rand,heightAt,mPerUnit);
   var pisteGroup=new THREE.Group(); scene.add(pisteGroup);
   pistes.forEach(function(p){
     var mesh=new THREE.Mesh(buildRibbon(p.pts,p.width,heightAt,1.6),
@@ -6377,18 +6407,18 @@ function buildProceduralScene(r,base){
              buildLiftProc(scene,heightAt,rand,-0.52,1280,520)];
   var samples=[];
   pistes.forEach(function(p){for(var i=0;i<p.pts.length;i+=4)samples.push(p.pts[i]);});
-  buildTrees(scene,heightAt,rand,samples,WORLD,5);
+  buildTrees(scene,heightAt,rand,samples,half,5);
   buildVillageProc(scene,heightAt,rand);
   var skier=makeSkier(scene);
 
-  S={name:r.name,mode:'proc',renderer:base.renderer,scene:scene,camera:base.camera,
+  S={name:r.name,mode:mode,renderer:base.renderer,scene:scene,camera:base.camera,
      controls:base.controls,pistes:pistes,pisteGroup:pisteGroup,lifts:lifts,skier:skier,
-     sel:null,riding:null,raf:0,last:0,H:H,EX:WORLD,k:1,
-     mapB:{minx:-WORLD*1.15,maxx:WORLD*1.15,minz:-WORLD*1.15,maxz:WORLD*1.15}};
-  setNote('Stylized 3D preview — terrain & piste layout are illustrative, scaled to this resort\u2019s real vertical drop and difficulty mix. Drag to orbit · pinch to zoom.');
+     sel:null,riding:null,raf:0,last:0,H:H,EX:half,vrange:H,k:k,
+     mapB:{minx:-half*1.15,maxx:half*1.15,minz:-half*1.15,maxz:half*1.15}};
+  setNote(note);
 }
-function buildTerrainProc(scene,heightAt,H){
-  var SEG=150,SIZE=WORLD*2.3;
+function buildTerrainProc(scene,heightAt,H,half,mode){
+  var SEG=150,SIZE=(mode==='terr'?half*2:WORLD*2.3);
   var g=new THREE.PlaneGeometry(SIZE,SIZE,SEG,SEG);
   g.rotateX(-Math.PI/2);
   var pos=g.attributes.position, colors=new Float32Array(pos.count*3);
@@ -6409,7 +6439,7 @@ function buildTerrainProc(scene,heightAt,H){
   g.computeVertexNormals();
   scene.add(new THREE.Mesh(g,new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.93,metalness:0.02})));
 }
-function genPistes(r,rand,heightAt,scaleFt){
+function genPistes(r,rand,heightAt,mPerUnit){
   var acres=parseFloat(String(r.acres||'1000').replace(/[^0-9.]/g,''))||1000;
   var total=acres>4000?14:acres>1500?12:acres>400?10:8;
   var mix=[r.green||0,r.blue||0,r.red||0,r.black||0];
@@ -6425,11 +6455,11 @@ function genPistes(r,rand,heightAt,scaleFt){
   var out=[],seq=[0,0,0,0];
   for(i=0;i<list.length;i++){
     var d=DIFFS[list[i]];
-    out.push(makePiste(r.name,d,seq[list[i]]++,i,list.length,rand,heightAt,scaleFt));
+    out.push(makePiste(r.name,d,seq[list[i]]++,i,list.length,rand,heightAt,mPerUnit));
   }
   return out;
 }
-function makePiste(seed,d,seq,num,den,rand,heightAt,scaleFt){
+function makePiste(seed,d,seq,num,den,rand,heightAt,mPerUnit){
   var azC=-1.02+2.04*(den<=1?0.5:num/(den-1))+(rand()-0.5)*0.14;
   var r0=170+rand()*130, r1=1150+rand()*190, K=d.pts, cps=[];
   var phase=rand()*Math.PI*2, j, t;
@@ -6447,8 +6477,7 @@ function makePiste(seed,d,seq,num,den,rand,heightAt,scaleFt){
   var len=curve.getLength(), drop=pts[0].y-pts[pts.length-1].y, horiz=0;
   for(var q=1;q<pts.length;q++){var a=pts[q-1],b=pts[q];horiz+=Math.hypot(b.x-a.x,b.z-a.z);}
   return {name:d.label+' '+(seq+1),diff:d,curve:curve,pts:pts,width:d.w,
-    lenFt:len*scaleFt,lenM:len*scaleFt*0.3048,
-    dropFt:Math.max(0,drop)*scaleFt,dropM:Math.max(0,drop)*scaleFt*0.3048,
+    lenM:len*mPerUnit,dropM:Math.max(0,drop)*mPerUnit,
     grade:horiz>0?drop/horiz*100:0};
 }
 function buildLiftProc(scene,heightAt,rand,az,r0,r1){
