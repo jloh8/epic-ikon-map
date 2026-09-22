@@ -862,6 +862,7 @@ body.apt-mode #apt-bar{display:flex}
             <div class="s3d-stat"><span id="s3d-grade">—</span><span class="s3d-sub">avg grade</span></div>
             <div class="s3d-stat"><span id="s3d-steep">—</span><span class="s3d-sub">steepest</span></div>
           </div>
+          <canvas id="s3d-profile" height="64" style="width:100%;height:64px;display:block;margin:6px 0;"></canvas>
           <div id="s3d-mapwrap">
             <canvas id="s3d-map"></canvas>
             <div id="s3d-maplabel">trail map · tap a line</div>
@@ -6850,6 +6851,29 @@ function selectPiste(p){
   document.getElementById('s3d-len').textContent=(p.lenM/1609.34).toFixed(1)+' mi';
   document.getElementById('s3d-grade').textContent=Math.round(p.grade)+'%';
   document.getElementById('s3d-steep').textContent=Math.round(p.maxGrade||0)+'%';
+  /* elevation profile (Bonvo-style): run elevation vs distance */
+  (function(){
+    var cv=document.getElementById('s3d-profile');if(!cv||!p.pts||p.pts.length<2)return;
+    var w=cv.clientWidth||cv.parentElement.clientWidth||300,h=64;
+    cv.width=w*2;cv.height=h*2; /* retina */
+    var x=cv.getContext('2d');x.scale(2,2);
+    x.clearRect(0,0,w,h);
+    var ys=p.pts.map(function(v){return v.y;});
+    var mn=Math.min.apply(null,ys),mx=Math.max.apply(null,ys),rg=(mx-mn)||1;
+    x.beginPath();x.moveTo(0,h);
+    for(var i=0;i<p.pts.length;i++){
+      var px=i/(p.pts.length-1)*w, py=h-4-((ys[i]-mn)/rg)*(h-10);
+      x.lineTo(px,py);
+    }
+    x.lineTo(w,h);x.closePath();
+    x.fillStyle=p.diff.css+'33';x.fill();
+    x.beginPath();
+    for(var j=0;j<p.pts.length;j++){
+      var qx=j/(p.pts.length-1)*w, qy=h-4-((ys[j]-mn)/rg)*(h-10);
+      if(j===0)x.moveTo(qx,qy);else x.lineTo(qx,qy);
+    }
+    x.strokeStyle=p.diff.css;x.lineWidth=2;x.stroke();
+  })();
   var chips=document.getElementById('s3d-chips').children;
   for(var i=0;i<chips.length;i++)chips[i].classList.toggle('on',chips[i]._piste===p);
   drawMap();
