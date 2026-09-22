@@ -6284,13 +6284,10 @@ function buildRealScene(r,base,dem,osm){
       width:op.diff.w*k,lenM:len,dropM:trueDrop,grade:horiz>0?dropSum/horiz*100:0,
       maxGrade:steepestGrade(raw,tH,1),real:true};
     var mesh=new THREE.Mesh(buildRibbon(pts,p.width,hAt,12+p.width*0.25),
-      new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide}));
+      new THREE.MeshBasicMaterial({color:op.diff.col,side:THREE.DoubleSide}));
     mesh.frustumCulled=false; /* bad bounding-sphere culling hid ribbons entirely */
     mesh.userData.piste=p; p.mesh=mesh; p.mat=mesh.material;
-    /* run name painted onto the ribbon, one label per ~350m of run */
-    var tex=makePisteTexture((tree?'🌲 ':'')+nm,op.diff.css);
-    tex.repeat.x=Math.max(1,Math.round(p.lenM/350));
-    mesh.material.map=tex; p.tex=tex;
+    /* names shown on selection only — painted names were unreadable noise */
     pisteGroup.add(mesh);
     if(tree){ /* bright dashed centreline marks tree runs in 3D */
       var lg=new THREE.BufferGeometry().setFromPoints(pts.map(function(v){
@@ -6704,7 +6701,20 @@ function finishBuild(r,tok){
     ptr.y=-((e.clientY-rc.top)/rc.height)*2+1;
     ray.setFromCamera(ptr,S.camera);
     var hits=ray.intersectObjects(S.pisteGroup.children,false);
-    if(hits.length) selectPiste(hits[0].object.userData.piste);
+    if(hits.length){selectPiste(hits[0].object.userData.piste);return;}
+    /* finger-friendly fallback: nearest run centreline in screen space (40px) */
+    var tapX=e.clientX-rc.left,tapY=e.clientY-rc.top,best=null,bestD=40*40;
+    var v=new THREE.Vector3();
+    S.pistes.forEach(function(p){
+      if(!p.pts||!p.pts.length)return;
+      for(var i=0;i<p.pts.length;i+=8){
+        v.copy(p.pts[i]).project(S.camera);
+        var sx=(v.x*0.5+0.5)*rc.width, sy=(-v.y*0.5+0.5)*rc.height;
+        var ddx=sx-tapX,ddy=sy-tapY,dd=ddx*ddx+ddy*ddy;
+        if(dd<bestD){bestD=dd;best=p;}
+      }
+    });
+    if(best) selectPiste(best);
   });
   resetCam();
   buildChips();
@@ -6830,7 +6840,10 @@ function tick(now){
 function selectPiste(p){
   if(!S||!p) return;
   S.sel=p;
-  S.pistes.forEach(function(q){q.mat.emissiveIntensity=(q===p?0.85:0.18);});
+  /* vivid selection: selected run glows bright yellow, others keep difficulty color */
+  S.pistes.forEach(function(q){
+    if(q.mat&&q.mat.color)q.mat.color.set(q===p?0xffe135:q.diff.col);
+  });
   document.getElementById('s3d-linename').textContent=p.name;
   document.getElementById('s3d-linediff').textContent=p.diff.label+(p.real?' · real':'')+(p.tree?' · 🌲 tree run':'');
   document.getElementById('s3d-vert').textContent=Math.round(p.dropM*3.28084).toLocaleString()+' ft';
