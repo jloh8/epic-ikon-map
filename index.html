@@ -6313,7 +6313,8 @@ function buildTerrainReal(scene,hAt,half,vrange){
   g.rotateX(-Math.PI/2);
   var pos=g.attributes.position,colors=new Float32Array(pos.count*3);
   var cSnow=new THREE.Color(0xe9f1fa),cShade=new THREE.Color(0xa9bcd4),
-      cRock=new THREE.Color(0x5d6772),tmp=new THREE.Color(),e=Math.max(20,half*0.012);
+      cRock=new THREE.Color(0x5d6772),cForest=new THREE.Color(0x2e5d43),tmp=new THREE.Color(),e=Math.max(20,half*0.012);
+  var treeline=vrange*0.42;
   for(var i=0;i<pos.count;i++){
     var x=pos.getX(i),z=pos.getZ(i),h=hAt(x,z);
     pos.setY(i,h);
@@ -6322,6 +6323,8 @@ function buildTerrainReal(scene,hAt,half,vrange){
         sl=Math.sqrt(sx*sx+sz*sz);
     tmp.copy(cSnow).lerp(cShade,Math.min(1,sl*1.15));
     if(sl>1.15)tmp.lerp(cRock,Math.min(1,(sl-1.15)*1.1));
+    /* painted-trail-map look: forested green valleys below the treeline */
+    if(h<treeline)tmp.lerp(cForest,Math.min(1,(treeline-h)/(treeline*0.9))*0.85);
     tmp.lerp(cSnow,Math.min(0.3,h/(vrange*1.4+1)));
     colors[i*3]=tmp.r;colors[i*3+1]=tmp.g;colors[i*3+2]=tmp.b;
   }
@@ -6370,7 +6373,7 @@ function makePisteTexture(name,css){
 function buildLiftMesh(scene,hAt,curve,k){
   var grp=new THREE.Group();
   grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(60)),
-    new THREE.LineBasicMaterial({color:0x8b98a8})));
+    new THREE.LineBasicMaterial({color:0xd92d20})));
   var tm=new THREE.MeshStandardMaterial({color:0x4b5563,roughness:0.7});
   var nk=6,t,v2,gy,h;
   for(var q=1;q<nk;q++){
@@ -6568,7 +6571,8 @@ function buildTerrainProc(scene,heightAt,H,half,mode){
   g.rotateX(-Math.PI/2);
   var pos=g.attributes.position, colors=new Float32Array(pos.count*3);
   var cSnow=new THREE.Color(0xe9f1fa),cShade=new THREE.Color(0xaebfd6),
-      cRock=new THREE.Color(0x66707c),tmp=new THREE.Color(),e=18;
+      cRock=new THREE.Color(0x66707c),cForest=new THREE.Color(0x2e5d43),tmp=new THREE.Color(),e=18;
+  var treeline=H*0.42;
   for(var i=0;i<pos.count;i++){
     var x=pos.getX(i),z=pos.getZ(i),h=heightAt(x,z);
     pos.setY(i,h);
@@ -6577,6 +6581,8 @@ function buildTerrainProc(scene,heightAt,H,half,mode){
         sl=Math.sqrt(sx*sx+sz*sz);
     tmp.copy(cSnow).lerp(cShade,Math.min(1,sl*1.4));
     if(sl>1.1) tmp.lerp(cRock,Math.min(1,(sl-1.1)*1.2));
+    /* painted-trail-map look: forested green valleys below the treeline */
+    if(h<treeline)tmp.lerp(cForest,Math.min(1,(treeline-h)/(treeline*0.9))*0.85);
     tmp.lerp(cSnow,Math.min(0.35,h/(H*2.2)));
     colors[i*3]=tmp.r;colors[i*3+1]=tmp.g;colors[i*3+2]=tmp.b;
   }
@@ -6592,7 +6598,7 @@ function genPistes(r,rand,heightAt,mPerUnit,trueH){
   for(i=0;i<4;i++){counts[i]=Math.floor(mix[i]/100*total);assigned+=counts[i];}
   var order=[0,1,2,3].sort(function(a,b){return (mix[b]/100*total-counts[b])-(mix[a]/100*total-counts[a]);});
   var rem=total-assigned;
-  for(i=0;i<rem;i++){var di=order[i%4]; if(mix[di]>0) counts[di++];}
+  for(i=0;i<rem;i++){var di=order[i%4]; if(mix[di]>0) counts[di]++;}
   for(i=0;i<4;i++) if(mix[i]>0&&counts[i]===0) counts[i]=1;
   var list=[];
   for(i=0;i<4;i++) for(k=0;k<counts[i];k++) list.push(i);
