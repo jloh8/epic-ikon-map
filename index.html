@@ -6175,6 +6175,20 @@ function fetchTerrainBaked(r){
   },function(){return null;});
 }
 
+/* ── real data: baked piste/lift geometry (data/pistes/<slug>.json) ──
+   Extracted from OpenStreetMap. Same-origin fetch; falls back to live Overpass
+   when the baked file is missing. */
+function fetchPistesBaked(r){
+  return fetch('data/pistes/'+slugify(r.name)+'.json').then(function(res){
+    if(!res.ok)throw new Error('no baked pistes');
+    return res.json();
+  }).then(function(j){
+    var osm=parseOSM(j,r.lat,r.lng);
+    if(!osm)throw new Error('bad baked pistes');
+    return osm;
+  },function(){return null;});
+}
+
 /* ── scene construction ── */
 function buildViewer(r,tok){
   if(!alive(r,tok))return;
@@ -6184,7 +6198,10 @@ function buildViewer(r,tok){
     var base;
     try{base=makeBase(dem?dem.half:WORLD);}catch(e){showErr();return;}
     setLoad('Loading real pistes · OpenStreetMap…');
-    fetchOSM(r.lat,r.lng).then(function(osm){
+    /* baked piste geometry first (reliable, instant); live Overpass as fallback */
+    fetchPistesBaked(r).then(function(baked){
+      return baked||fetchOSM(r.lat,r.lng);
+    }).then(function(osm){
       if(!alive(r,tok)){disposeBase(base);return;}
       try{
         if(dem&&osm)buildRealScene(r,base,dem,osm);
