@@ -6024,14 +6024,22 @@ function alive(r,tok){
 /* ── real data: OpenStreetMap pistes + lifts (Overpass, then main API fallback) ── */
 function fetchOSM(lat,lng){
   if(typeof lat!=='number'||typeof lng!=='number')return Promise.resolve(null);
-  return overpassQuery('https://overpass-api.de/api/interpreter',lat,lng).then(function(r){
-    return r||overpassQuery('https://overpass.kumi.systems/api/interpreter',lat,lng);
+  /* full bbox first; dense areas can time out Overpass, so retry at half bbox before
+     moving to the next mirror, then fall back to the main OSM API (small bbox) */
+  return overpassQuery('https://overpass-api.de/api/interpreter',lat,lng,1).then(function(r){
+    return r||overpassQuery('https://overpass-api.de/api/interpreter',lat,lng,0.55);
+  }).then(function(r){
+    return r||overpassQuery('https://overpass.kumi.systems/api/interpreter',lat,lng,1);
+  }).then(function(r){
+    return r||overpassQuery('https://overpass.kumi.systems/api/interpreter',lat,lng,0.55);
   }).then(function(r){
     return r||osmMainFallback(lat,lng);
   });
 }
-function overpassQuery(url,lat,lng){
-  var s=lat-0.045,w=lng-0.06,n=lat+0.045,e=lng+0.06;
+function overpassQuery(url,lat,lng,scale){
+  scale=scale||1;
+  var ds=0.038*scale,dw=0.05*scale;
+  var s=lat-ds,w=lng-dw,n=lat+ds,e=lng+dw;
   var q='[out:json][timeout:30];(way["piste:type"~"^(downhill|ski|glade)$"]('+
     s+','+w+','+n+','+e+');way["aerialway"~"^(chair_lift|gondola|cable_car|t-bar|j-bar|platter|drag_lift|magic_carpet)$"]('+
     s+','+w+','+n+','+e+'););out tags geom;';
@@ -6048,9 +6056,10 @@ function overpassQuery(url,lat,lng){
   }).then(function(j){return parseOSM(j,lat,lng);},
     function(){return null;});
 }
-/* fallback for networks that block Overpass: main OSM API (XML, smaller bbox) */
+/* fallback for networks that block Overpass: main OSM API (XML, small bbox —
+   the main API caps at 50000 nodes, so keep the box tight around the resort) */
 function osmMainFallback(lat,lng){
-  var s=lat-0.02,w=lng-0.025,n=lat+0.02,e=lng+0.025;
+  var s=lat-0.012,w=lng-0.016,n=lat+0.012,e=lng+0.016;
   var ctl=null;
   try{ctl=new AbortController();}catch(ab){}
   var to=setTimeout(function(){if(ctl)ctl.abort();},55000);
@@ -6624,6 +6633,11 @@ function makePiste(seed,d,seq,num,den,rand,heightAt,mPerUnit,trueH){
   var c0=new THREE.CatmullRomCurve3(cps,false,'catmullrom',0.35);
   var pts=c0.getSpacedPoints(110);
   for(var s=0;s<pts.length;s++) pts[s].y=heightAt(pts[s].x,pts[s].z)+1.6;
+  /* illustrative pistes must run downhill: the resort centre isn't always the peak,
+     so flip any path that climbs — fixes zeroed vertical/grade stats */
+  var yA=trueH?trueH(pts[0].x,pts[0].z):pts[0].y,
+      yB=trueH?trueH(pts[pts.length-1].x,pts[pts.length-1].z):pts[pts.length-1].y;
+  if(yB>yA)pts.reverse();
   var curve=new THREE.CatmullRomCurve3(pts);
   var len=curve.getLength(), drop=pts[0].y-pts[pts.length-1].y, horiz=0;
   for(var q=1;q<pts.length;q++){var a=pts[q-1],b=pts[q];horiz+=Math.hypot(b.x-a.x,b.z-a.z);}
