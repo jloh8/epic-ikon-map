@@ -6320,9 +6320,13 @@ function buildRealScene(r,base,dem,osm){
       width:op.diff.w,lenM:len,dropM:trueDrop,grade:horiz>0?dropSum/horiz*100:0,
       maxGrade:steepestGrade(raw,tH,1),real:true};
     var mesh=new THREE.Mesh(buildRibbon(pts,p.width,hAt,2),
-      new THREE.MeshStandardMaterial({color:op.diff.col,roughness:0.85,metalness:0,
+      new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.85,metalness:0,
         emissive:op.diff.col,emissiveIntensity:0.06}));
     mesh.userData.piste=p; p.mesh=mesh; p.mat=mesh.material;
+    /* run name painted onto the ribbon, one label per ~350m of run */
+    var tex=makePisteTexture(nm,op.diff.css);
+    tex.repeat.x=Math.max(1,Math.round(p.lenM/350));
+    mesh.material.map=tex; p.tex=tex;
     pisteGroup.add(mesh);
     if(tree){ /* dark dashed centreline marks tree runs in 3D */
       var lg=new THREE.BufferGeometry().setFromPoints(pts.map(function(v){
@@ -6331,11 +6335,6 @@ function buildRealScene(r,base,dem,osm){
       var ln=new THREE.Line(lg,ld); ln.computeLineDistances();
       pisteGroup.add(ln); p.treeLine=ln;
     }
-    /* floating name label at the run midpoint (hidden until Labels is on / selected) */
-    var mid=curve.getPointAt(0.5);
-    var lab=makeLabel((tree?'🌲 ':'')+nm,op.diff.css,120*k);
-    lab.position.set(mid.x,mid.y+70*k,mid.z); lab.visible=false;
-    scene.add(lab); p.label=lab;
     return p;
   });
 
@@ -6367,7 +6366,7 @@ function buildRealScene(r,base,dem,osm){
   S={name:r.name,mode:'real',renderer:base.renderer,scene:scene,camera:base.camera,
      controls:base.controls,pistes:pistes,pisteGroup:pisteGroup,lifts:lifts,skier:skier,
      sel:null,riding:null,raf:0,last:0,H:vrange,EX:half,vrange:vrange,k:k,
-     labelsOn:false,treeOnly:false,
+     labelsOn:true,treeOnly:false,
      mapB:pisteBounds(pistes)};
   setNote('Real terrain (elevation data) · real pistes & lifts © OpenStreetMap contributors · 🌲 = tree run (OSM glade tag or forest cover) — drag to orbit · pinch to zoom.');
 }
@@ -6395,7 +6394,7 @@ function buildTerrainReal(scene,hAt,half,vrange){
 }
 function buildRibbon(pts,width,hAt,lift){
   var n=pts.length,w=width/2;
-  var verts=new Float32Array(n*2*3),idx=[],i;
+  var verts=new Float32Array(n*2*3),uvs=new Float32Array(n*2*2),idx=[],i;
   for(i=0;i<n;i++){
     var a=pts[Math.max(0,i-1)],b=pts[Math.min(n-1,i+1)];
     var dx=b.x-a.x,dz=b.z-a.z,l=Math.hypot(dx,dz)||1;dx/=l;dz/=l;
@@ -6403,12 +6402,33 @@ function buildRibbon(pts,width,hAt,lift){
     var lx=pts[i].x+nx*w,lz=pts[i].z+nz*w,rx=pts[i].x-nx*w,rz=pts[i].z-nz*w;
     verts[(i*2)*3]=lx;  verts[(i*2)*3+1]=hAt(lx,lz)+lift; verts[(i*2)*3+2]=lz;
     verts[(i*2+1)*3]=rx;verts[(i*2+1)*3+1]=hAt(rx,rz)+lift;verts[(i*2+1)*3+2]=rz;
+    var u=i/(n-1);
+    uvs[(i*2)*2]=u;  uvs[(i*2)*2+1]=0;
+    uvs[(i*2+1)*2]=u;uvs[(i*2+1)*2+1]=1;
     if(i<n-1){var kk=i*2;idx.push(kk,kk+1,kk+2,kk+1,kk+3,kk+2);}
   }
   var g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(verts,3));
+  g.setAttribute('uv',new THREE.BufferAttribute(uvs,2));
   g.setIndex(idx); g.computeVertexNormals();
   return g;
+}
+/* run name painted onto the ribbon itself (trail-map style); one label per ~350m */
+function makePisteTexture(name,css){
+  var c=document.createElement('canvas');c.width=1024;c.height=96;
+  var x=c.getContext('2d');
+  x.fillStyle=css;x.fillRect(0,0,c.width,c.height);
+  x.fillStyle='rgba(255,255,255,0.92)';
+  x.font='700 52px "DM Sans",system-ui,sans-serif';
+  x.textAlign='center';x.textBaseline='middle';
+  var t=String(name).toUpperCase();
+  if(x.measureText(t).width>c.width-60){
+    x.font='700 40px "DM Sans",system-ui,sans-serif';
+  }
+  x.fillText(t,c.width/2,c.height/2+2);
+  var tex=new THREE.CanvasTexture(c);
+  tex.wrapS=THREE.RepeatWrapping;tex.anisotropy=4;
+  return tex;
 }
 function buildLiftMesh(scene,hAt,curve,k){
   var grp=new THREE.Group();
@@ -6573,14 +6593,13 @@ function buildProceduralScene(r,base,dem){
   var pisteGroup=new THREE.Group(); scene.add(pisteGroup);
   pistes.forEach(function(p){
     var mesh=new THREE.Mesh(buildRibbon(p.pts,p.width,heightAt,1.6),
-      new THREE.MeshStandardMaterial({color:p.diff.col,roughness:0.85,metalness:0,
+      new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.85,metalness:0,
         emissive:p.diff.col,emissiveIntensity:0.06}));
     mesh.userData.piste=p; p.mesh=mesh; p.mat=mesh.material;
+    var tex=makePisteTexture(p.name,p.diff.css);
+    tex.repeat.x=Math.max(1,Math.round(p.lenM/350));
+    mesh.material.map=tex; p.tex=tex;
     pisteGroup.add(mesh);
-    var mid=p.curve.getPointAt(0.5);
-    var lab=makeLabel(p.name,p.diff.css,110*k);
-    lab.position.set(mid.x,mid.y+60*k,mid.z); lab.visible=false;
-    scene.add(lab); p.label=lab;
   });
   var lifts=[buildLiftProc(scene,heightAt,rand,0.12,1330,330),
              buildLiftProc(scene,heightAt,rand,-0.52,1280,520)];
@@ -6602,7 +6621,7 @@ function buildProceduralScene(r,base,dem){
   S={name:r.name,mode:mode,renderer:base.renderer,scene:scene,camera:base.camera,
      controls:base.controls,pistes:pistes,pisteGroup:pisteGroup,lifts:lifts,skier:skier,
      sel:null,riding:null,raf:0,last:0,H:H,EX:half,vrange:H,k:k,
-     labelsOn:false,treeOnly:false,
+     labelsOn:true,treeOnly:false,
      mapB:{minx:-half*1.15,maxx:half*1.15,minz:-half*1.15,maxz:half*1.15}};
   setNote(note);
 }
@@ -6715,6 +6734,7 @@ function finishBuild(r,tok){
   resetCam();
   buildChips();
   buildLegend();
+  var lb=document.getElementById('s3d-labelbtn');if(lb)lb.classList.toggle('on',!!(S&&S.labelsOn));
   var ft=document.getElementById('s3d-fstitle');if(ft)ft.textContent=r.name+' · 3D';
   var def=null,i;
   if(S.mode==='real'){
@@ -6772,7 +6792,7 @@ function s3dLabels(){
   var b=document.getElementById('s3d-labelbtn');
   if(b)b.classList.toggle('on',S.labelsOn);
   S.pistes.forEach(function(p){
-    if(p.label)p.label.visible=S.labelsOn||p===S.sel;
+    if(p.mat){p.mat.map=S.labelsOn?p.tex:null;p.mat.needsUpdate=true;}
   });
 }
 function buildLegend(){
@@ -6820,7 +6840,6 @@ function selectPiste(p){
   document.getElementById('s3d-steep').textContent=Math.round(p.maxGrade||0)+'%';
   var chips=document.getElementById('s3d-chips').children;
   for(var i=0;i<chips.length;i++)chips[i].classList.toggle('on',chips[i]._piste===p);
-  S.pistes.forEach(function(q){if(q.label)q.label.visible=S.labelsOn||q===p;});
   drawMap();
 }
 function buildChips(){
@@ -6849,8 +6868,7 @@ function applyTreeFilter(){
     p=c._piste;
     var show=!S.treeOnly||!p||p.tree;
     c.style.display=show?'':'none';
-    if(p){p.mesh.visible=show;if(p.treeLine)p.treeLine.visible=show;
-      if(p.label)p.label.visible=show&&(S.labelsOn||p===S.sel);}
+    if(p){p.mesh.visible=show;if(p.treeLine)p.treeLine.visible=show;}
   }
   drawMap();
 }
