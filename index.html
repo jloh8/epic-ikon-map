@@ -455,13 +455,13 @@
 #s3d-fssub{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);margin-top:2px}
 #s3d-fsclose{background:rgba(255,255,255,.07);border:1px solid var(--border2);color:var(--text);width:44px;height:44px;border-radius:50%;font-size:17px;cursor:pointer;flex-shrink:0;touch-action:manipulation}
 #s3d-stage.full #s3d-viewwrap{flex:1 1 auto;height:auto;min-height:0;border-radius:0;border:none}
-#s3d-stage.full #s3d-mapwrap{display:none}
+#s3d-stage.full #s3d-mapwrap{display:block;height:58dvh;margin-bottom:8px}
 #s3d-stage.full .s3d-note{display:none}
-#s3d-stage.full #s3d-bottom{flex-shrink:0;overflow-y:auto;max-height:40dvh;padding:8px 12px calc(12px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
-#s3d-stage.full #s3d-mapwrap{margin-bottom:8px}
+#s3d-stage.full #s3d-bottom{flex-shrink:0;overflow-y:auto;max-height:34dvh;padding:8px 12px calc(12px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
 #s3d-viewwrap.fullbtn-hide #s3d-expandbtn{display:none}
 #s3d-mapwrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border2);background:#0a1420;margin-bottom:10px}
 #s3d-map{display:block;width:100%;height:230px;touch-action:manipulation;cursor:pointer}
+#s3d-stage.full #s3d-map{height:58dvh}
 #s3d-maplabel{position:absolute;top:7px;left:10px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.55);pointer-events:none}
 #s3d-chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
 #s3d-chips::-webkit-scrollbar{display:none}
@@ -6979,7 +6979,8 @@ function sizeMap(){
 function drawMap(){
   var c=document.getElementById('s3d-map');if(!c||!S) return;
   var ctx=c.getContext('2d'),dpr=Math.min(window.devicePixelRatio||1,2);
-  var W=c.clientWidth||300,Hh=230,i;
+  var W=c.clientWidth||300,Hh=c.clientHeight||230,i;
+  c.width=W*dpr;c.height=Hh*dpr;
   ctx.setTransform(dpr,0,0,dpr,0,0);
   var g=ctx.createLinearGradient(0,0,0,Hh);
   g.addColorStop(0,'#0d1a2c');g.addColorStop(1,'#0a1420');
@@ -6994,19 +6995,45 @@ function drawMap(){
   S.pistes.forEach(function(p){
     if(S.treeOnly&&!p.tree)return;
     var sel=(p===S.sel);
-    ctx.strokeStyle=p.diff.css;ctx.globalAlpha=sel?1:0.55;
+    /* tree runs: gold halo underneath, unmistakable */
+    if(p.tree){
+      ctx.strokeStyle='#ffb020';ctx.globalAlpha=0.9;ctx.lineWidth=(sel?7:4.6);
+      ctx.lineJoin='round';ctx.lineCap='round';ctx.setLineDash([]);
+      ctx.beginPath();
+      for(i=0;i<p.pts.length;i+=2){var mh=w2m(p.pts[i].x,p.pts[i].z,W,Hh);i?ctx.lineTo(mh[0],mh[1]):ctx.moveTo(mh[0],mh[1]);}
+      ctx.stroke();ctx.globalAlpha=1;
+    }
+    ctx.strokeStyle=p.diff.css;ctx.globalAlpha=sel?1:0.85;
     ctx.lineWidth=sel?5:2.6;ctx.lineJoin='round';ctx.lineCap='round';
-    if(p.tree)ctx.setLineDash([7,5]);
+    ctx.setLineDash([]);
     if(sel){ctx.shadowColor=p.diff.css;ctx.shadowBlur=10;}
     ctx.beginPath();
     for(i=0;i<p.pts.length;i+=2){var m=w2m(p.pts[i].x,p.pts[i].z,W,Hh);i?ctx.lineTo(m[0],m[1]):ctx.moveTo(m[0],m[1]);}
-    ctx.stroke();ctx.shadowBlur=0;ctx.globalAlpha=1;
+    ctx.stroke();ctx.shadowBlur=0;ctx.globalAlpha=1;ctx.setLineDash([]);
   });
   if(S.sel){
     var mid=S.sel.pts[(S.sel.pts.length/2)|0],mm=w2m(mid.x,mid.z,W,Hh);
     ctx.font='600 11px "DM Mono",monospace';ctx.fillStyle='#fff';
     ctx.fillText(S.sel.name,Math.min(W-64,mm[0]+8),mm[1]-8);
   }
+  /* run labels: name at midpoint, skip if too close to another label (declutter) */
+  var placed=[];
+  ctx.font='500 10px "DM Mono",monospace';ctx.textAlign='center';
+  S.pistes.forEach(function(p){
+    if(S.treeOnly&&!p.tree)return;
+    if(p===S.sel)return; /* selected already labeled above */
+    var mid2=p.pts[(p.pts.length/2)|0],m2=w2m(mid2.x,mid2.z,W,Hh);
+    for(var k=0;k<placed.length;k++){
+      var dx=m2[0]-placed[k][0],dy=m2[1]-placed[k][1];
+      if(dx*dx+dy*dy<1600)return; /* 40px min separation */
+    }
+    placed.push(m2);
+    ctx.lineWidth=3;ctx.strokeStyle='rgba(0,0,0,0.7)';
+    ctx.strokeText(p.tree?'🌲 '+p.name:p.name,m2[0],m2[1]-6);
+    ctx.fillStyle=p.tree?'#ffd166':'#fff';
+    ctx.fillText(p.tree?'🌲 '+p.name:p.name,m2[0],m2[1]-6);
+  });
+  ctx.textAlign='left';
   if(S.riding){
     var R=S.riding,pos=R.p.curve.getPointAt(Math.min(1,R.t)),m2=w2m(pos.x,pos.z,W,Hh);
     ctx.fillStyle='#ff7a1a';ctx.beginPath();ctx.arc(m2[0],m2[1],7,0,Math.PI*2);ctx.fill();
