@@ -6280,8 +6280,10 @@ function buildRealScene(r,base,dem,osm){
     }
     var trueDrop=Math.max(0,tH(raw[0].x,raw[0].z)-tH(raw[raw.length-1].x,raw[raw.length-1].z));
     var nm=op.name||(op.diff.label+' '+(idx+1));
-    var tree=!!(op.glade||/glade/i.test(nm));
-    var treeSrc=op.glade?'glade tag':(/glade/i.test(nm)?'name':'');
+    /* tree-run detection: glade tag, or name suggests trees (glade/woods/trees/forest/timber) */
+    var treeRx=/glade|woods?|trees?|forest|timber|stash/i;
+    var tree=!!(op.glade||treeRx.test(nm));
+    var treeSrc=op.glade?'glade tag':(treeRx.test(nm)?'name':'');
     var p={name:nm,diff:op.diff,curve:curve,pts:pts,tree:tree,treeSrc:treeSrc,
       width:op.diff.w*k,lenM:len,dropM:trueDrop,grade:horiz>0?dropSum/horiz*100:0,
       maxGrade:steepestGrade(raw,tH,1),real:true};
@@ -6291,12 +6293,11 @@ function buildRealScene(r,base,dem,osm){
     mesh.userData.piste=p; p.mesh=mesh; p.mat=mesh.material;
     /* names shown on selection only — painted names were unreadable noise */
     pisteGroup.add(mesh);
-    if(tree){ /* bright dashed centreline marks tree runs in 3D */
-      var lg=new THREE.BufferGeometry().setFromPoints(pts.map(function(v){
-        return new THREE.Vector3(v.x,v.y+12+p.width*0.25,v.z);}));
-      var ld=new THREE.LineDashedMaterial({color:0x4ade80,dashSize:11*k,gapSize:7*k,linewidth:3});
-      var ln=new THREE.Line(lg,ld); ln.computeLineDistances();
-      pisteGroup.add(ln); p.treeLine=ln;
+    if(tree){ /* unmistakable gold halo marks tree runs — user loves trees */
+      var halo=new THREE.Mesh(buildRibbon(pts,p.width*1.5,hAt,10+p.width*0.25),
+        new THREE.MeshBasicMaterial({color:0xffb020,side:THREE.DoubleSide}));
+      halo.frustumCulled=false;
+      pisteGroup.add(halo); p.treeLine=halo;
     }
     return p;
   });
