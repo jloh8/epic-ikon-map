@@ -930,6 +930,7 @@ body.apt-mode #apt-bar{display:flex}
       <button class="tc-tier-btn v3"        id="precip-mix"  onclick="setPrecipType('mix')"  style="font-size:9px;padding:2px 8px">🌨 Mixed</button>
     </div>
     <button class="rbtn" id="places-filter-btn" onclick="togglePlacesFilterPanel()">🔎 Places Filter</button>
+    <button class="rbtn" id="camp-btn" onclick="toggleCampMode()">🏕 Camp Mode</button>
     <div id="places-filter-panel" class="side-subpanel">
       <div class="subpanel-title"><span class="dot" style="color:#38bdf8">◆</span> Places &amp; comfort filter</div>
       <div class="api-note" style="margin-bottom:8px">One filter for everything overnight-adjacent: parking, EV charging, hotels, 24-hour gyms &amp; travel centers — all powered by Google Places. Toggle what you want below, then scan once.</div>
@@ -7103,6 +7104,158 @@ document.addEventListener('keydown',function(e){
 })();
 
 
+</script>
+<style>
+/* ── CAMP MODE (Model Y stealth camping layer) ── */
+#camp-panel{position:absolute;right:12px;bottom:12px;z-index:1200;width:288px;max-width:calc(100vw - 24px);max-height:52vh;overflow-y:auto;background:rgba(13,20,32,.94);border:1px solid var(--border);border-radius:14px;padding:12px 14px;backdrop-filter:blur(10px);box-shadow:var(--shadow-md);display:none;font-family:'DM Sans',sans-serif}
+#camp-panel.open{display:block}
+.camp-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.camp-hdr b{font-family:'Syne',sans-serif;font-size:13px;color:var(--snow)}
+#camp-close{background:none;border:none;color:var(--text3);font-size:20px;line-height:1;cursor:pointer;padding:6px 10px;touch-action:manipulation}
+.camp-sec{font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.08em;margin:10px 0 6px;font-family:'DM Mono',monospace}
+.camp-legend{display:flex;flex-wrap:wrap;gap:8px}
+.camp-lg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+.camp-dot{width:12px;height:12px;border-radius:4px;display:inline-block;flex:none}
+.camp-dot.bolt{border-radius:50%}
+.camp-chips{display:flex;flex-wrap:wrap;gap:6px}
+.camp-chip{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:5px 8px;font-size:10.5px;color:var(--text2);font-family:'DM Mono',monospace}
+.camp-chip b{color:var(--ice);font-weight:600}
+.camp-chip .sub{display:block;font-size:9px;color:var(--text4);font-family:'DM Sans',sans-serif}
+.camp-rules{font-size:11px;color:var(--text2);line-height:1.5}
+.camp-rules li{margin-bottom:4px}
+.camp-warn{margin-top:10px;font-size:11px;color:var(--amber);line-height:1.45;background:var(--amber-dim);border:1px solid rgba(251,191,36,.25);border-radius:8px;padding:8px 10px}
+.camp-src{font-size:10px;margin-top:6px}
+.camp-src a{color:var(--ice3)}
+.camp-conf{font-size:9.5px;color:var(--text4);font-family:'DM Mono',monospace;margin-top:6px}
+@media (max-width:640px){#camp-panel{right:8px;left:8px;width:auto;bottom:8px}}
+</style>
+<script>
+/* ════════════════════════════════════════════════════════════════════════
+   CAMP MODE — Model Y stealth camping layer (Phase 1 camp data layer)
+   Toggle in the tool rail shows hand-curated overnight spots (green/amber/red
+   by legality for a passenger car) + EV chargers, with per-stop January-low
+   chips from baked-in static averages (live Open-Meteo comes in Phase 2).
+   Data: data/camp-spots.json. Self-contained; shares nothing mutable.
+   ════════════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+var campOn=false, campData=null, campMarkers=[], campPanel=null;
+
+var LEGAL_FILL={green:'#22c55e',amber:'#f59e0b',red:'#ef4444'};
+var LEGAL_LABEL={green:'Legal overnight',amber:'Conditions \u2014 verify',red:'Banned for cars'};
+var LEGAL_CLS={green:'safe',amber:'medium',red:'basic'};
+
+function campEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+function campSpotIcon(legal){
+  var fill=LEGAL_FILL[legal]||'#64748b';
+  var h='<svg width="28" height="28" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">'
+    +'<rect x="3" y="3" width="22" height="22" rx="7" fill="'+fill+'" stroke="rgba(255,255,255,0.55)" stroke-width="1.5"/>'
+    +'<text x="14" y="20.5" text-anchor="middle" font-size="14">\u26FA</text></svg>';
+  return L.divIcon({html:h,className:'',iconSize:[28,28],iconAnchor:[14,14]});
+}
+function campChargeIcon(){
+  var h='<svg width="26" height="26" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg">'
+    +'<circle cx="13" cy="13" r="12" fill="#0f172a" stroke="#eab308" stroke-width="2"/>'
+    +'<path d="M14 5L7 14h5l-1 7 8-11h-5l1-5z" fill="#eab308"/></svg>';
+  return L.divIcon({html:h,className:'',iconSize:[26,26],iconAnchor:[13,13]});
+}
+
+function campCardHTML(f){
+  var meta=campEsc(f.stop||'');
+  var badge='', note=campEsc(f.notes||''), extra='';
+  if(f.type==='overnight'){
+    meta+=' \u00B7 overnight spot';
+    badge='<span class="place-tier '+LEGAL_CLS[f.legal]+'">'+campEsc(LEGAL_LABEL[f.legal]||f.legal)+'</span>';
+  }else{
+    var net=f.network||'charger';
+    meta+=' \u00B7 '+campEsc(net)+(f.kw?' \u00B7 '+campEsc(f.kw)+' kW':'')+(f.price?' \u00B7 '+campEsc(f.price):'');
+    badge='<span class="place-tier charge">\u26A1 EV charger</span>';
+  }
+  if(f.approx) extra+='<div class="camp-conf">Pin approximate \u2014 use the car\u2019s nav for the exact spot.</div>';
+  if(f.confidence && f.type==='overnight' && f.legal!=='red'){
+    var cl={high:'Verified against official source',medium:'Single strong source',low:'One report \u2014 a lead, not a fact'}[f.confidence];
+    if(cl) extra+='<div class="camp-conf">Confidence: '+campEsc(cl)+'.</div>';
+  }
+  var src=f.source?'<div class="camp-src"><a href="'+campEsc(f.source)+'" target="_blank" rel="noopener">Source \u2197</a></div>':'';
+  return '<div class="place-popup"><div class="place-title">'+campEsc(f.name)+'</div>'
+    +'<div class="place-meta">'+meta+'</div>'+badge
+    +'<div class="place-note" style="margin-top:6px">'+note+'</div>'+extra+src+'</div>';
+}
+
+function buildCampPanel(stops){
+  if(campPanel){campPanel.classList.add('open');return;}
+  campPanel=document.createElement('div');
+  campPanel.id='camp-panel';
+  var chips=stops.map(function(s){
+    var t=s.jan_low_f==null
+      ? '<b>mild</b><span class="sub">mildest stop</span>'
+      : '<b>'+campEsc(s.jan_low_c)+'\u00B0C / '+campEsc(s.jan_low_f)+'\u00B0F</b><span class="sub">Jan avg low</span>';
+    return '<div class="camp-chip">'+campEsc(s.stop)+t+'</div>';
+  }).join('');
+  campPanel.innerHTML=
+    '<div class="camp-hdr"><b>\u{1F3D5}\uFE0F Camp Mode \u2014 Model Y</b><button id="camp-close" aria-label="Close camp panel">\u00D7</button></div>'
+    +'<div class="camp-sec">Overnight legality (passenger car)</div>'
+    +'<div class="camp-legend">'
+    +'<span class="camp-lg"><span class="camp-dot" style="background:#22c55e"></span>Legal</span>'
+    +'<span class="camp-lg"><span class="camp-dot" style="background:#f59e0b"></span>Conditions</span>'
+    +'<span class="camp-lg"><span class="camp-dot" style="background:#ef4444"></span>Banned</span>'
+    +'<span class="camp-lg"><span class="camp-dot bolt" style="background:#0f172a;border:2px solid #eab308"></span>Charger</span>'
+    +'</div>'
+    +'<div class="camp-sec">January overnight lows (static avg)</div>'
+    +'<div class="camp-chips">'+chips+'</div>'
+    +'<div class="camp-sec">Camp Mode rules</div>'
+    +'<ul class="camp-rules" style="margin:0;padding-left:16px">'
+    +'<li>Won\u2019t start below <b>20%</b> battery \u2014 the car reserves the rest to drive out.</li>'
+    +'<li>Arrive <b>80%+</b> in deep cold \u00B7 <b>Sentry Mode OFF</b> when camping.</li>'
+    +'<li>\u221218\u00B0C nights drain <b>25\u201340%</b>; below \u221225\u00B0C, <b>40\u201360%+</b>.</li>'
+    +'</ul>'
+    +'<div class="camp-warn">\u26A0\uFE0F Rawlins WY \u2192 Steamboat is ~130 mi with no Tesla fast charger. Leave Rawlins near 100% in winter.</div>';
+  document.body.appendChild(campPanel);
+  document.getElementById('camp-close').addEventListener('click',function(){campPanel.classList.remove('open');});
+  campPanel.classList.add('open');
+}
+
+function showCampLayer(){
+  var d=campData;
+  d.features.forEach(function(f){
+    if(f.lat==null||f.lng==null)return;
+    var icon=f.type==='charger'?campChargeIcon():campSpotIcon(f.legal);
+    var m=L.marker([f.lat,f.lng],{icon:icon}).bindPopup(campCardHTML(f),{maxWidth:280});
+    m.addTo(map); campMarkers.push(m);
+  });
+  buildCampPanel(d.stops||[]);
+}
+function hideCampLayer(){
+  campMarkers.forEach(function(m){map.removeLayer(m);});
+  campMarkers=[];
+  if(campPanel)campPanel.classList.remove('open');
+}
+
+async function toggleCampMode(){
+  var btn=document.getElementById('camp-btn');
+  campOn=!campOn;
+  if(btn){btn.classList.toggle('active',campOn);btn.textContent=campOn?'\u{1F3D5}\uFE0F Camp Mode on':'\u{1F3D5}\uFE0F Camp Mode';}
+  if(campOn){
+    if(!campData){
+      try{
+        var r=await fetch('data/camp-spots.json');
+        if(!r.ok)throw new Error('HTTP '+r.status);
+        campData=await r.json();
+      }catch(e){
+        campOn=false;
+        if(btn){btn.classList.remove('active');btn.textContent='\u26A0\uFE0F Camp data unavailable';}
+        setTimeout(function(){if(btn&&!campOn)btn.textContent='\u{1F3D5}\uFE0F Camp Mode';},2600);
+        return;
+      }
+    }
+    showCampLayer();
+  }else{
+    hideCampLayer();
+  }
+}
+window.toggleCampMode=toggleCampMode;
+})();
 </script>
 <script>
 if ('serviceWorker' in navigator) {

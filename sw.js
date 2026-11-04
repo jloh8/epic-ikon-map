@@ -4,7 +4,7 @@
  * revalidation, so the app boots offline after the first visit.
  * Cross-origin requests (tiles, fonts, weather APIs) pass through untouched.
  * Bump CACHE on each deploy to force clients onto the new shell. */
-const CACHE = 'camp-atlas-v1';
+const CACHE = 'camp-atlas-v2';
 
 const CORE = [
   './',
@@ -19,7 +19,8 @@ const CORE = [
   'vendor/leaflet/images/marker-icon-2x.png',
   'vendor/leaflet/images/marker-shadow.png',
   'vendor/leaflet/images/layers.png',
-  'vendor/leaflet/images/layers-2x.png'
+  'vendor/leaflet/images/layers-2x.png',
+  'data/camp-spots.json'
 ];
 
 self.addEventListener('install', (event) => {
