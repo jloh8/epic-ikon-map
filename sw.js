@@ -4,7 +4,7 @@
  * revalidation, so the app boots offline after the first visit.
  * Cross-origin requests (tiles, fonts, weather APIs) pass through untouched.
  * Bump CACHE on each deploy to force clients onto the new shell. */
-const CACHE = 'camp-atlas-v2';
+const CACHE = 'camp-atlas-v3';
 
 const CORE = [
   './',

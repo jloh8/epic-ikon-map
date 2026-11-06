@@ -171,7 +171,38 @@
 
 /* ── CAM FULLSCREEN ── */#cam-view{ position: fixed; inset: 0; background: rgba(11, 18, 28, 0.95); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(12px); }#cam-view.open{ display: flex; animation: fadeIn 0.2s ease; }#cv-hdr{ position: absolute; top: 0; left: 0; right: 0; padding: 20px 24px; display: flex; align-items: flex-start; justify-content: space-between; background: linear-gradient(rgba(11,18,28,0.9), transparent); }#cv-title{ font-size: 18px; font-weight: 700; color: white; }#cv-sub{ font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; font-family: 'DM Mono', monospace; }#cv-close{ background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; width: 44px; height: 44px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }#cv-close:hover{ background: rgba(255,255,255,0.25); }#cv-img{ max-width: 90vw; max-height: 75vh; border-radius: var(--radius); object-fit: contain; box-shadow: var(--shadow-lg); }#cv-nav{ display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; justify-content: center; }.cv-pill{ background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.7); font-size: 12px; padding: 6px 14px; border-radius: 24px; cursor: pointer; font-family: 'DM Mono', monospace; transition: all 0.2s; }.cv-pill:hover{ background: rgba(255,255,255,0.15); color: white; }.cv-pill.active{ background: rgba(14,165,233,0.25); border-color: rgba(14,165,233,0.6); color: var(--ice); }#cv-windy{ margin-top: 12px; background: rgba(14,165,233,0.15); border: 1px solid rgba(14,165,233,0.4); color: var(--ice); font-size: 12px; padding: 8px 16px; border-radius: 24px; cursor: pointer; font-family: 'DM Mono', monospace; transition: all 0.2s; }#cv-windy:hover{ background: rgba(14,165,233,0.25); color: white; }#cv-note{ position: absolute; bottom: 16px; font-size: 12px; color: rgba(255,255,255,0.3); font-family: 'DM Mono', monospace; }.ldg{ font-size: 13px; color: var(--text4); padding: 32px 0; text-align: center; font-family: 'DM Mono', monospace; }.err{ font-size: 13px; color: var(--red); padding: 10px 0; }
 
-/* ── RADAR CTRL ── */#radar-ctrl{ position: absolute; top: 16px; left: 16px; z-index: 1200; display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - var(--topbar-h) - 40px); overflow-y: auto; padding-right: 8px; }#radar-ctrl::-webkit-scrollbar{ width: 6px; }#radar-ctrl::-webkit-scrollbar-thumb{ background: var(--border3); border-radius: 6px; }#radar-ctrl::-webkit-scrollbar-track{ background: transparent; }.rbtn{ background: rgba(19, 30, 43, 0.85); border: 1px solid var(--border); border-radius: 10px; padding: 11px 16px; font-size: 12.5px; font-weight: 500; font-family: 'DM Sans', sans-serif; letter-spacing: 0.01em; color: var(--text2); cursor: pointer; white-space: nowrap; transition: all 0.18s; backdrop-filter: blur(8px); box-shadow: var(--shadow-sm); }.rbtn:hover{ background: var(--bg2); color: var(--text); border-color: var(--border3); transform: translateY(-1px); }.rbtn.active{ background: rgba(14,165,233,0.14); border-color: rgba(14,165,233,0.55); color: var(--ice3); box-shadow: 0 0 0 1px rgba(14,165,233,0.15), 0 2px 12px rgba(14,165,233,0.18); }.rbtn.loading{ color: var(--text4); cursor: wait; }#scrub-panel{ background: rgba(19,30,43,0.92); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; width: 280px; display: none; backdrop-filter: blur(12px); box-shadow: var(--shadow-md); }.scrub-hdr{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }.scrub-time{ font-size: 14px; color: var(--ice); font-weight: 500; font-family: 'DM Mono', monospace; }.scrub-date{ font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }#play-btn{ background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 10px 16px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text); cursor: pointer; transition: all 0.2s; touch-action: manipulation; }#play-btn.playing{ background: rgba(14,165,233,0.15); border-color: rgba(14,165,233,0.5); color: var(--ice); }#radar-slider{ width: 100%; margin: 8px 0 6px; cursor: pointer; accent-color: var(--ice); }.sticks{ display: flex; justify-content: space-between; }.stick{ font-size: 10px; color: var(--text4); font-family: 'DM Mono', monospace; }.stick.active{ color: var(--ice); }
+/* ── MAP TOOL BUTTONS (now live in the topbar tools strip #topbar-r3) ── */.rbtn{ background: rgba(19, 30, 43, 0.85); border: 1px solid var(--border); border-radius: 10px; padding: 11px 16px; font-size: 12.5px; font-weight: 500; font-family: 'DM Sans', sans-serif; letter-spacing: 0.01em; color: var(--text2); cursor: pointer; white-space: nowrap; transition: all 0.18s; backdrop-filter: blur(8px); box-shadow: var(--shadow-sm); }.rbtn:hover{ background: var(--bg2); color: var(--text); border-color: var(--border3); transform: translateY(-1px); }.rbtn.active{ background: rgba(14,165,233,0.14); border-color: rgba(14,165,233,0.55); color: var(--ice3); box-shadow: 0 0 0 1px rgba(14,165,233,0.15), 0 2px 12px rgba(14,165,233,0.18); }.rbtn.loading{ color: var(--text4); cursor: wait; }#scrub-panel{ position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 1200; background: rgba(19,30,43,0.92); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; width: min(320px, calc(100vw - 24px)); display: none; backdrop-filter: blur(12px); box-shadow: var(--shadow-md); }.scrub-hdr{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }.scrub-time{ font-size: 14px; color: var(--ice); font-weight: 500; font-family: 'DM Mono', monospace; }.scrub-date{ font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }#play-btn{ background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 10px 16px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text); cursor: pointer; transition: all 0.2s; touch-action: manipulation; }#play-btn.playing{ background: rgba(14,165,233,0.15); border-color: rgba(14,165,233,0.5); color: var(--ice); }#radar-slider{ width: 100%; margin: 8px 0 6px; cursor: pointer; accent-color: var(--ice); }.sticks{ display: flex; justify-content: space-between; }.stick{ font-size: 10px; color: var(--text4); font-family: 'DM Mono', monospace; }.stick.active{ color: var(--ice); }
+
+/* ── TOOLS STRIP (topbar row 3) — every map tool lives here now, off the map ── */
+#topbar-r3{ display: flex; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+#topbar-r3::-webkit-scrollbar{ display: none; }
+#topbar-r3 .rbtn{ padding: 8px 12px; font-size: 12px; flex-shrink: 0; }
+
+/* ── SKI AREAS IN VIEW — 10-day forecast that follows the map ── */
+#ski-areas-panel{ position: absolute; top: 0; right: 0; bottom: 0; width: 380px; max-width: 92vw; z-index: 1500; background: var(--bg1); border-left: 1px solid var(--border2); box-shadow: -18px 0 60px rgba(0,0,0,0.7); display: none; flex-direction: column; overflow: hidden; }
+#ski-areas-panel.open{ display: flex; }
+.sa-body{ flex: 1; overflow-y: auto; padding: 12px 16px 20px; scrollbar-width: thin; scrollbar-color: var(--border3) transparent; }
+.sa-body::-webkit-scrollbar{ width: 7px; }
+.sa-body::-webkit-scrollbar-thumb{ background: var(--border3); border-radius: 6px; }
+.sa-row{ background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 11px 12px; margin-bottom: 10px; cursor: pointer; }
+.sa-row:hover{ border-color: var(--border3); }
+.sa-top{ display: flex; align-items: center; gap: 8px; }
+.sa-dot{ width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.sa-name{ font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--snow); flex: 1; min-width: 0; }
+.sa-dist{ font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text4); white-space: nowrap; }
+.sa-loc{ font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin: 3px 0 8px 16px; }
+.sa-tot{ display: inline-block; margin: 0 0 8px 16px; font-family: 'DM Mono', monospace; font-size: 9px; color: var(--ice); background: var(--blue-hi-dim); border: 1px solid var(--border2); border-radius: 4px; padding: 1px 6px; }
+.sa-tot.dry{ color: var(--text4); background: transparent; }
+.sa-days{ display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.sa-days::-webkit-scrollbar{ display: none; }
+.sa-day{ min-width: 46px; flex: 1 0 46px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 2px; text-align: center; }
+.sa-day.today{ border-color: rgba(245,158,11,0.4); }
+.sa-dl{ font-size: 9px; color: var(--text4); text-transform: uppercase; font-family: 'DM Mono', monospace; }
+.sa-di{ font-size: 14px; margin: 3px 0; line-height: 1; }
+.sa-dt{ font-size: 10px; color: var(--text); font-weight: 500; font-family: 'DM Mono', monospace; }
+.sa-ds{ font-size: 9px; color: var(--ice); font-family: 'DM Mono', monospace; margin-top: 1px; }
+.sa-ds.none{ color: var(--text4); }
+.sa-ldg{ padding: 40px 18px; text-align: center; color: var(--text2); font-size: 12px; line-height: 1.6; }
 
 /* ── LIVE PARKING API PANEL ── */
 /* ── TESLA CHARGING PANEL ─────────────────────────────────────── */#tesla-panel-wrap{ display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border2); }#tesla-panel-wrap.open{ display: block; }.tc-filter-row{ display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }.tc-tier-btn{ font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border); background: transparent; cursor: pointer; transition: all .2s; white-space: nowrap; }.tc-tier-btn.v3{ color: #4ade80; border-color: #166534; }.tc-tier-btn.v3.active{ background: #022c16; border-color: #22c55e; }.tc-tier-btn.v2{ color: #2dd4bf; border-color: #134e4a; }.tc-tier-btn.v2.active{ background: #011f1f; border-color: #14b8a6; }.tc-tier-btn.dest{ color: #94a3b8; border-color: #374151; }.tc-tier-btn.dest.active{ background: #1f2937; border-color: #6b7280; }.tc-tier-btn.all{ color: var(--text2); border-color: var(--border2); }.tc-tier-btn.all.active{ background: var(--bg3); border-color: var(--border3); color: var(--text); }.tc-status{ font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; min-height: 18px; margin-top: 6px; }.tc-count{ font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 4px; }
@@ -376,7 +407,7 @@
   display: flex; align-items: center; gap: 7px;
 }.subpanel-title .dot{ font-size: 12px; }.gis-divider{ border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px; }
 
-/* ── ADDED: unified Places Filter panel ── */#places-filter-panel{ width: 320px; max-height: 76vh; overflow-y: auto; scrollbar-width: thin; padding: 14px; }.pf-subsection{ display: none; margin: 8px 0 0 8px; padding: 10px 0 2px 12px; border-left: 2px solid var(--border2); }.pf-subsection.open{ display: block; }.pf-head{
+/* ── ADDED: unified Places Filter panel ── */#places-filter-panel{ position: absolute; top: 16px; left: 16px; z-index: 1200; width: 320px; max-height: 76vh; overflow-y: auto; scrollbar-width: thin; padding: 14px; }.pf-subsection{ display: none; margin: 8px 0 0 8px; padding: 10px 0 2px 12px; border-left: 2px solid var(--border2); }.pf-subsection.open{ display: block; }.pf-head{
   display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;
   padding: 10px 12px; margin-top: 8px; border-radius: 10px;
   border: 1px solid var(--border); background: var(--bg1); transition: all .18s;
@@ -635,8 +666,6 @@ body.apt-mode #apt-bar{display:flex}
   /* resort info panel becomes a thumb-reachable bottom sheet on phones */
   #info-panel{top:auto !important;bottom:12px;left:12px;right:12px;width:auto;max-height:64vh;display:none;}
   #info-panel .pbody{max-height:44vh;}
-  /* while the resort sheet is up, get the floating tool buttons out of the way */
-  body.ip-open #radar-ctrl{display:none;}
   .gm-card{bottom:12px;}
 }
 </style>
@@ -692,6 +721,16 @@ body.apt-mode #apt-bar{display:flex}
     </div>
     <span class="apt-unit-pill">°F</span>
     <span class="apt-count"><b id="apt-visCount">—</b> / <span id="apt-totCount">—</span> shown</span>
+  </div>
+
+  <!-- ── TOOLS STRIP: every map tool lives here now, off the map ── -->
+  <div id="topbar-r3">
+    <button class="rbtn" id="rad-btn" onclick="toggleRadar()">🌧 Radar</button>
+    <button class="rbtn" id="ski-areas-btn" onclick="toggleSkiAreasPanel()">🏔 Ski Areas</button>
+    <button class="rbtn" id="westikon-btn" onclick="openWestIkon()">🌦 Ikon 10-Day WX</button>
+    <button class="rbtn" id="sv-tool-btn" onclick="toggleSVTool()">🧍 Street View Pin</button>
+    <button class="rbtn" id="places-filter-btn" onclick="togglePlacesFilterPanel()">🔎 Places Filter</button>
+    <button class="rbtn" id="camp-btn" onclick="toggleCampMode()">🏕 Camp Mode</button>
   </div>
 
   <div id="topbar-r2">
@@ -920,17 +959,7 @@ body.apt-mode #apt-bar{display:flex}
     <div id="cv-note">Auto-refreshes every 60s · Press Esc to close</div>
   </div>
 
-  <!-- Radar + Parking -->
-  <div id="radar-ctrl">
-    <button class="rbtn" id="sv-tool-btn" onclick="toggleSVTool()">🧍 Street View Pin</button>
-    <button class="rbtn" id="rad-btn" onclick="toggleRadar()">🌧 Radar</button>
-    <div id="precip-type-row" style="display:none;gap:4px;margin-top:4px;flex-wrap:wrap">
-      <button class="tc-tier-btn v2 active" id="precip-rain" onclick="setPrecipType('rain')" style="font-size:9px;padding:2px 8px">🌧 Rain</button>
-      <button class="tc-tier-btn dest"      id="precip-snow" onclick="setPrecipType('snow')" style="font-size:9px;padding:2px 8px">❄️ Snow</button>
-      <button class="tc-tier-btn v3"        id="precip-mix"  onclick="setPrecipType('mix')"  style="font-size:9px;padding:2px 8px">🌨 Mixed</button>
-    </div>
-    <button class="rbtn" id="places-filter-btn" onclick="togglePlacesFilterPanel()">🔎 Places Filter</button>
-    <button class="rbtn" id="camp-btn" onclick="toggleCampMode()">🏕 Camp Mode</button>
+  <!-- Map tools now live in the topbar tools strip (#topbar-r3) — nothing floats over the map. -->
     <div id="places-filter-panel" class="side-subpanel">
       <div class="subpanel-title"><span class="dot" style="color:#38bdf8">◆</span> Places &amp; comfort filter</div>
       <div class="api-note" style="margin-bottom:8px">One filter for everything overnight-adjacent: parking, EV charging, hotels, 24-hour gyms &amp; travel centers — all powered by Google Places. Toggle what you want below, then scan once.</div>
@@ -1110,11 +1139,6 @@ body.apt-mode #apt-bar{display:flex}
 
     </div>
 
-    <!-- ── ADDED: West Coast Ikon picks ── -->
-    <button class="rbtn" id="westikon-btn" onclick="openWestIkon()">🌦 Ikon 10-Day WX</button>
-
-    <!-- ── ADDED: Road Trip planner ── -->
-
     <div id="scrub-panel">
       <div class="scrub-hdr">
         <div>
@@ -1125,8 +1149,12 @@ body.apt-mode #apt-bar{display:flex}
       </div>
       <input type="range" id="radar-slider" min="0" max="5" value="5" step="1" oninput="onScrub(this.value)"/>
       <div class="sticks" id="sticks"></div>
+      <div id="precip-type-row" style="display:none;gap:4px;margin-top:10px;flex-wrap:wrap">
+        <button class="tc-tier-btn v2 active" id="precip-rain" onclick="setPrecipType('rain')" style="font-size:9px;padding:2px 8px">🌧 Rain</button>
+        <button class="tc-tier-btn dest"      id="precip-snow" onclick="setPrecipType('snow')" style="font-size:9px;padding:2px 8px">❄️ Snow</button>
+        <button class="tc-tier-btn v3"        id="precip-mix"  onclick="setPrecipType('mix')"  style="font-size:9px;padding:2px 8px">🌨 Mixed</button>
+      </div>
     </div>
-  </div>
 
   <!-- Basemap switcher -->
   <div id="bm-wrap">
@@ -1204,6 +1232,18 @@ body.apt-mode #apt-bar{display:flex}
     </div>
     <div class="iw-grid" id="iw-grid"><div class="iw-ldg">Loading Ikon forecasts…</div></div>
     <div class="iw-foot" id="iw-foot">Open-Meteo · next 10 days · °F, snow in inches · each cell is that resort's local forecast day</div>
+  </div>
+
+  <!-- ── SKI AREAS IN VIEW: 10-day forecast that follows the map ── -->
+  <div id="ski-areas-panel">
+    <div class="iw-head">
+      <button class="wi-close" onclick="closeSkiAreasPanel()">✕</button>
+      <div class="iw-eyebrow">Live · follows the map</div>
+      <div class="iw-title">Ski Areas in view</div>
+      <div class="iw-sub" id="sa-count">Pan the map to see forecasts</div>
+    </div>
+    <div class="sa-body" id="sa-body"><div class="sa-ldg">Open this panel, then pan or zoom the map — the 10-day forecast follows whatever ski areas are in view.</div></div>
+    <div class="iw-foot">Open-Meteo · next 10 days · °F, snow in inches · tap a resort to fly to it</div>
   </div>
 
   <!-- ── ADDED: Road Trip planner panel ── -->
@@ -1861,6 +1901,7 @@ function toggleFilter(t){
   const btn = document.querySelector(`.filter-btn.${t}-btn`);
   if (btn) btn.classList.toggle('active', filters[t]);
   applyFilters();
+  if(saPanelOpen()) refreshSkiAreasPanel();
 }
 function updateCounts(){
   let e=0,ik=0,b=0;
@@ -4141,6 +4182,125 @@ function setIkonSort(mode){
 }
 function filterIkonWx(v){ ikonWxFilter=v||''; renderIkonWx(); }
 
+// ── SKI AREAS IN VIEW — 10-day forecast that follows the map ────────────────
+// Lists the ski areas inside the current map viewport (nearest first, max 12),
+// each with a live 10-day Open-Meteo forecast. Refreshes on every pan/zoom
+// while the panel is open, and when the pass filter changes.
+let saWxCache = {}; // "lat,lng" -> {at, daily}
+let saReqId = 0;
+const SA_TTL_MS = 30*60*1000, SA_MAX = 12;
+
+function saPanelOpen(){ const p=document.getElementById('ski-areas-panel'); return p && p.classList.contains('open'); }
+function toggleSkiAreasPanel(){
+  const p=document.getElementById('ski-areas-panel');
+  const open=!p.classList.contains('open');
+  p.classList.toggle('open', open);
+  document.getElementById('ski-areas-btn').classList.toggle('active', open);
+  if(open) refreshSkiAreasPanel();
+}
+function closeSkiAreasPanel(){
+  const p=document.getElementById('ski-areas-panel');
+  if(p) p.classList.remove('open');
+  const b=document.getElementById('ski-areas-btn');
+  if(b) b.classList.remove('active');
+}
+function saDistMi(lat1,lon1,lat2,lon2){
+  const R=3958.8, p=Math.PI/180;
+  const a=0.5-Math.cos((lat2-lat1)*p)/2+Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+function saVisibleResorts(){
+  if(!map) return [];
+  const b=map.getBounds(), c=map.getCenter();
+  const list=[];
+  resorts.forEach((r,ri)=>{
+    if(!filters[r.pass]) return;
+    if(!b.contains([r.lat,r.lng])) return;
+    list.push({r, ri, dMi: saDistMi(c.lat,c.lng,r.lat,r.lng)});
+  });
+  list.sort((a,b)=>a.dMi-b.dMi);
+  return list.slice(0,SA_MAX);
+}
+function saCountInView(){
+  if(!map) return 0;
+  const b=map.getBounds();
+  return resorts.filter(r=>filters[r.pass]&&b.contains([r.lat,r.lng])).length;
+}
+function saSnowTotal(daily){
+  const s=daily&&daily.snowfall_sum; if(!s) return 0;
+  return s.slice(0,10).reduce((a,b)=>a+(b||0),0);
+}
+async function refreshSkiAreasPanel(){
+  if(!saPanelOpen()) return;
+  const req=++saReqId;
+  const vis=saVisibleResorts();
+  const body=document.getElementById('sa-body');
+  const count=document.getElementById('sa-count');
+  const total=saCountInView();
+  if(!vis.length){
+    count.textContent='No ski areas in this view';
+    body.innerHTML='<div class="sa-ldg">No ski areas in this view.<br>Pan or zoom out to see forecasts.</div>';
+    return;
+  }
+  count.textContent=vis.length+(total>vis.length?` of ${total} in view`:'')+' in view · nearest first';
+  renderSkiAreas(vis);
+  const now=Date.now();
+  const need=vis.filter(({r})=>{ const k=r.lat+','+r.lng; const c=saWxCache[k]; return !c || (now-c.at)>SA_TTL_MS; });
+  if(!need.length) return;
+  try{
+    const CHUNK=20;
+    for(let i=0;i<need.length;i+=CHUNK){
+      const slice=need.slice(i,i+CHUNK);
+      const url=`https://api.open-meteo.com/v1/forecast?latitude=${slice.map(x=>x.r.lat).join(',')}&longitude=${slice.map(x=>x.r.lng).join(',')}&daily=weathercode,temperature_2m_max,temperature_2m_min,snowfall_sum&timezone=auto&forecast_days=10&temperature_unit=fahrenheit&precipitation_unit=inch&windspeed_unit=mph`;
+      const res=await fetch(url);
+      const data=await res.json();
+      const arr=Array.isArray(data)?data:[data];
+      arr.forEach((d,j)=>{ if(slice[j]&&d&&d.daily) saWxCache[slice[j].r.lat+','+slice[j].r.lng]={at:Date.now(), daily:d.daily}; });
+    }
+    if(req!==saReqId) return; // a newer pan superseded this fetch
+    renderSkiAreas(vis);
+  }catch(e){
+    if(req!==saReqId) return;
+    renderSkiAreas(vis, true);
+  }
+}
+function renderSkiAreas(vis, err){
+  const body=document.getElementById('sa-body');
+  let html='';
+  vis.forEach(({r,ri,dMi})=>{
+    const k=r.lat+','+r.lng, c=saWxCache[k];
+    const nm=(r.name||'').replace(/</g,'&lt;');
+    const lc=(r.loc||'').replace(/</g,'&lt;');
+    const dot=r.pass==='epic'?'#4a7ef5':r.pass==='ikon'?'#3b7cbf':'#f59e0b';
+    const dist=dMi<1?dMi.toFixed(1)+' mi':Math.round(dMi)+' mi';
+    html+=`<div class="sa-row" onclick="saOpenResort(${ri})"><div class="sa-top"><span class="sa-dot" style="background:${dot}"></span><span class="sa-name">${nm}</span><span class="sa-dist">${dist} from centre</span></div><div class="sa-loc">${lc} · ${r.pass.toUpperCase()}</div>`;
+    if(c&&c.daily){
+      const dl=c.daily, tot=saSnowTotal(dl);
+      const totTxt=tot>=0.5?`❄ ${tot.toFixed(0)}" / 10d`:'dry';
+      html+=`<span class="sa-tot${tot>=0.5?'':' dry'}">${totTxt}</span><div class="sa-days">`;
+      for(let i=0;i<10;i++){
+        const dt=new Date(dl.time[i]);
+        const lbl=i===0?'Today':DAYS[dt.getDay()];
+        const code=dl.weathercode?dl.weathercode[i]:0;
+        const hi=Math.round(dl.temperature_2m_max[i]), lo=Math.round(dl.temperature_2m_min[i]);
+        const sn=dl.snowfall_sum?(dl.snowfall_sum[i]||0):0;
+        html+=`<div class="sa-day${i===0?' today':''}"><div class="sa-dl">${lbl}</div><div class="sa-di">${WX[code]||'🌡️'}</div><div class="sa-dt">${hi}°/${lo}°</div><div class="sa-ds${sn>=0.1?'':' none'}">${sn>=0.1?sn.toFixed(1)+'"':'—'}</div></div>`;
+      }
+      html+='</div>';
+    } else {
+      html+=`<div class="sa-days"><div class="sa-day" style="flex:1"><div class="sa-dl">${err?'forecast unavailable':'loading…'}</div></div></div>`;
+    }
+    html+='</div>';
+  });
+  body.innerHTML=html;
+}
+function saOpenResort(idx){
+  const r=resorts[idx]; if(!r) return;
+  closeSkiAreasPanel();
+  map.flyTo([r.lat,r.lng],10,{duration:1.0});
+  if(typeof showPanel==='function') showPanel(r);
+}
+
 
 window.onload=function(){
   populateResortOptions();
@@ -4184,6 +4344,7 @@ window.onload=function(){
   });
   updateCounts();
   applyFilters();
+  map.on('moveend', function(){ if(saPanelOpen()) refreshSkiAreasPanel(); });
 };
 </script>
   <!-- ── PHOTO LIGHTBOX ────────────────────────────────────────────── -->
